@@ -220,13 +220,13 @@ public class Map {
         if(offhandStack.getItem().equals(Items.WRITABLE_BOOK) || offhandStack.getItem().equals(Items.WRITTEN_BOOK)) {
             var x = offhandStack.getNbt();
             if(!x.contains("pages")) {
-                player.sendMessage(Text.literal("Book is empty!"), false);
+                player.sendMessage(Text.literal("§6Book is empty!"), false);
                 return;
             }
 
             List<String> pages = new ArrayList<>();
             x.getList("pages", NbtElement.STRING_TYPE).copy().forEach((nbtElement -> {
-                pages.add(TextHelper.convertTextCompound((NbtString)nbtElement));
+                pages.add(TextHelper.convertTextCompound((NbtString)nbtElement).replace("@@","§"));
             }));
 
             ArrayList<EffectDataPair> effects = new ArrayList<EffectDataPair>();

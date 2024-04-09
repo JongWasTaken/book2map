@@ -22,6 +22,12 @@ public class Book2Map implements ModInitializer {
 		if (!Files.exists(CONFIG_TEXTURES_DIR)) {
 			try {
 				Files.createDirectories(CONFIG_TEXTURES_DIR);
+			} catch (Exception e) {
+				Book2Map.Logger.error("Error while creating config directories: " + e.toString());
+			}
+		}
+		if (!Files.exists(CONFIG_FONTS_DIR)) {
+			try {
 				Files.createDirectories(CONFIG_FONTS_DIR);
 			} catch (Exception e) {
 				Book2Map.Logger.error("Error while creating config directories: " + e.toString());

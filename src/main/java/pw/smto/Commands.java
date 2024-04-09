@@ -131,6 +131,14 @@ public class Commands {
                                 return 1;
                             })
                     )
+                    .then(literal("reload")
+                            .requires(s -> s.hasPermissionLevel(3))
+                            .executes(context -> {
+                                Fonts.reload();
+                                context.getSource().sendFeedback(() -> Text.of(TextHelper.GOLD + "Reloaded book2map!"), false);
+                                return 1;
+                            })
+                    )
             );
 
             server.getPlayerManager().getPlayerList().forEach(spe -> {

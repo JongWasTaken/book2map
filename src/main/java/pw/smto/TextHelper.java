@@ -47,44 +47,10 @@ public class TextHelper {
     public static final String WHITE = "§f";
 
 
-    public static void setGimmickItemText(List<Text> tooltip, @Nullable String flavorText, @Nullable String explanationText) {
-        if(flavorText != null)
-        {
-            var flavorTextLines = flavorText.split("\n");
-            for (var line : flavorTextLines) {
-                tooltip.add(Text.of(DARK_PURPLE + ITALIC + line));
-            }
-        }
-        if(explanationText != null)
-        {
-            var explanationTextLines = explanationText.split("\n");
-            for (var line : explanationTextLines) {
-                tooltip.add(Text.of(GOLD + line));
-            }
-        }
-    }
-
-    public static void showTitle(ServerPlayerEntity player, String text) {
-        player.networkHandler.sendPacket((Packet<?>) new TitleS2CPacket(Text.of(text)));
-    }
-
-    public static void showSubtitle(ServerPlayerEntity player, String text) {
-        player.networkHandler.sendPacket((Packet<?>) new TitleS2CPacket(Text.of("")));
-        player.networkHandler.sendPacket((Packet<?>) new SubtitleS2CPacket(Text.of(text)));
-    }
-
-    public static void showTitleWithSubtitle(ServerPlayerEntity player, String title, String subtitle) {
-        player.networkHandler.sendPacket((Packet<?>) new TitleS2CPacket(Text.of(title)));
-        player.networkHandler.sendPacket((Packet<?>) new SubtitleS2CPacket(Text.of(subtitle)));
-    }
-
     public static String convertTextCompound(NbtString n) {
-        //SurvivalPlus.Logger.warn("IN: " + n.asString());
-
-        JsonParser parser = new JsonParser();
         JsonObject rootObj;
         try {
-            rootObj = parser.parse(n.asString()).getAsJsonObject();
+            rootObj = JsonParser.parseString(n.asString()).getAsJsonObject();
         } catch (Exception ignored) { return n.asString(); }
         JsonArray extra = rootObj.getAsJsonArray("extra");
         StringBuilder out = new StringBuilder();
@@ -121,7 +87,7 @@ public class TextHelper {
                 out.append(Formatting.byName(color.toUpperCase(Locale.ROOT)));
             }
 
-            out.append(text); //.append(RESET)
+            out.append(text);
         }
 
         String defaultText = "";
@@ -180,9 +146,6 @@ public class TextHelper {
                 "text": ""
             }
          */
-        //SurvivalPlus.Logger.warn("OUT: " + out.toString());
         return out.toString();
     }
-
-
 }

@@ -33,5 +33,9 @@ public class Fonts {
 
         return f;
     }
-    public static final ArrayList<Font> LIST = findAllFonts();
+    public static ArrayList<Font> LIST = findAllFonts();
+
+    public static void reload() {
+        LIST = findAllFonts();
+    }
 }
