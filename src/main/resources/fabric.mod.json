@@ -1,0 +1,32 @@
+{
+	"schemaVersion": 1,
+	"id": "book2map",
+	"version": "${version}",
+	"name": "Book2Map",
+	"description": "Turn books into maps!",
+	"authors": [
+		"JongWasTaken"
+	],
+	"contact": {
+		"homepage": "https://modrinth.com/mod/book2map",
+		"sources": "https://github.com/JongWasTaken/book2map"
+	},
+	"license": "MIT",
+	"icon": "icon.png",
+	"environment": "*",
+	"entrypoints": {
+		"main": [
+          "pw.smto.Book2Map"
+		]
+	},
+	"mixins": [
+      "book2map.mixins.json"
+	],
+	"accessWidener" : "book2map.accesswidener",
+	"depends": {
+		"fabricloader": ">=0.14.21",
+		"minecraft": "~1.20.1",
+		"java": ">=17",
+		"fabric-api": "*"
+	}
+}
