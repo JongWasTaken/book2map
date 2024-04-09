@@ -2,25 +2,32 @@ package pw.smto;
 
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
+import net.fabricmc.loader.api.FabricLoader;
 import org.slf4j.LoggerFactory;
 
 import java.awt.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 
 public class Book2Map implements ModInitializer {
 	public static final String MOD_ID = "book2map";
-	public static final ArrayList<Font> FONTS = new ArrayList<Font>();
+	public static final Path CONFIG_BASE_DIR = Path.of(FabricLoader.getInstance().getConfigDir().toString(),MOD_ID);
+	public static final Path CONFIG_TEXTURES_DIR = Path.of(CONFIG_BASE_DIR.toString(),"textures");
+	public static final Path CONFIG_FONTS_DIR = Path.of(CONFIG_BASE_DIR.toString(),"fonts");
+
 
 	@Override
 	public void onInitialize() {
-		var fonts = GraphicsEnvironment.getLocalGraphicsEnvironment().getAllFonts();
-		for (Font font : fonts) {
-			if (font.getFontName().contains("Mono")) {
-				if (!font.getFontName().contains("Bold") && !font.getFontName().contains("Italic")) {
-					FONTS.add(font);
-				}
+		if (!Files.exists(CONFIG_TEXTURES_DIR)) {
+			try {
+				Files.createDirectories(CONFIG_TEXTURES_DIR);
+				Files.createDirectories(CONFIG_FONTS_DIR);
+			} catch (Exception e) {
+				Book2Map.Logger.error("Error while creating config directories: " + e.toString());
 			}
 		}
+
 		ServerLifecycleEvents.SERVER_STARTED.register(Commands::register);
 		Logger.info("book2map loaded!");
 	}

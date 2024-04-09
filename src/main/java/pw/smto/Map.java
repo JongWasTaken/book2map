@@ -7,7 +7,6 @@ package pw.smto;
 import eu.pb4.mapcanvas.api.core.CanvasColor;
 import eu.pb4.mapcanvas.api.core.CanvasImage;
 import eu.pb4.mapcanvas.api.utils.CanvasUtils;
-import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.FilledMapItem;
 import net.minecraft.item.ItemStack;
@@ -27,16 +26,14 @@ import net.minecraft.util.Hand;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.ColorHelper;
 import net.minecraft.util.math.MathHelper;
-import javax.imageio.ImageIO;
+
 import java.awt.*;
-import java.awt.geom.Ellipse2D;
 import java.awt.image.BufferedImage;
 import java.awt.image.DataBufferByte;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.*;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class Map {
     private static final double shadeCoeffs[] = { 0.71, 0.86, 1.0, 0.53 };
@@ -181,7 +178,7 @@ public class Map {
         return result;
     }
 
-    private static BufferedImage convertToBufferedImage(Image image) {
+    public static BufferedImage convertToBufferedImage(Image image) {
         BufferedImage newImage = new BufferedImage(image.getWidth(null), image.getHeight(null),
                 BufferedImage.TYPE_4BYTE_ABGR);
         Graphics2D g = newImage.createGraphics();
@@ -191,14 +188,14 @@ public class Map {
     }
 
     private static BufferedImage compositeImage(ServerPlayerEntity player, CompositeEffects.CanvasData d, List<EffectDataPair> effects) {
-        BufferedImage newImage = new BufferedImage(d.width, d.height,
+        BufferedImage newImage = new BufferedImage(d.width(), d.height(),
                 BufferedImage.TYPE_4BYTE_ABGR);
         Graphics2D g = newImage.createGraphics();
 
         // init
         g.setBackground(Color.BLACK);
         g.setColor(Color.BLACK);
-        g.fillRect(0,0, d.width, d.height);
+        g.fillRect(0,0, d.width(), d.height());
 
         // user effects
         String r = "";
@@ -236,7 +233,13 @@ public class Map {
 
             // READ DATA FROM BOOK HERE
             // defaults
-            String font = "Monocraft";
+            String font = Fonts.LIST.get(0).getFontName();
+            for (Font xfont : Fonts.LIST) {
+                if (xfont.getFontName().contains("Monocraft")) {
+                    font = xfont.getFontName();
+                    break;
+                }
+            }
             int width = 256;
             int height = 256;
             int lineSize = 20;
@@ -244,8 +247,8 @@ public class Map {
             int topOffset = 10;
             boolean dither = false;
             Color color = Color.WHITE;
-            effects.add(new EffectDataPair(Map.CompositeEffects.BACKGROUND_RANDOM, new ArrayList<>(List.of("brown"))));
-            effects.add(new EffectDataPair(Map.CompositeEffects.FRAME, new ArrayList<>(List.of("black"))));
+            effects.add(new EffectDataPair(CompositeEffects.BACKGROUND_RANDOM, new ArrayList<>(List.of("brown"))));
+            effects.add(new EffectDataPair(CompositeEffects.FRAME, new ArrayList<>(List.of("black"))));
             boolean presetSettings = true;
 
             var t2 = String.join("\n", pages).split("book2map");
@@ -309,10 +312,9 @@ public class Map {
                             } catch (Exception ignored) {}
                             continue;
                         }
-                        if (line[0].equals("color") || line[0].equals("c")) {
+                        if (line[0].equals("color") || line[0].equals("textcolor") || line[0].equals("text-color") || line[0].equals("font-color") || line[0].equals("fontcolor") || line[0].equals("c")) {
                             try {
-                                var temp = Formatting.byName(line[1].toUpperCase(Locale.ROOT));
-                                color = new Color((temp.getColorValue() / 256 / 256) % 256, (temp.getColorValue() / 256) % 256, temp.getColorValue() % 256);
+                                color = Colors.fromString(line[1]);
                             } catch (Exception ignored) {}
                             continue;
                         }
@@ -327,13 +329,13 @@ public class Map {
                                     String arguments = line[1].trim().replace(effect, "");
                                     arguments = arguments.substring(1);
                                     effects.add(new EffectDataPair(
-                                            Map.CompositeEffects.getByIdentifier(effect),
+                                            CompositeEffects.getByIdentifier(effect),
                                             new ArrayList<>(List.of(arguments.split(",")))
                                     ));
                                 }
                                 else {
                                     effects.add(new EffectDataPair(
-                                            Map.CompositeEffects.getByIdentifier(line[1]),
+                                            CompositeEffects.getByIdentifier(line[1]),
                                             new ArrayList<>()
                                     ));
                                 }
@@ -356,12 +358,12 @@ public class Map {
             int finalHeight = height;
             boolean finalDither = dither;
 
-            var bookEffect = new Map.CompositeEffects.CompositeEffect() {
+            var bookEffect = new CompositeEffects.CompositeEffect() {
                 public String getIdentifier() {return "book-content";}
 
                 public String getDescription() {return "book-content";}
                 private int currentLine = 0;
-                public String apply(Graphics2D g, Map.CompositeEffects.CanvasData d, List<String> unused) {
+                public String apply(Graphics2D g, CompositeEffects.CanvasData d, List<String> unused) {
                     g.setColor(Color.WHITE);
                     int charWidth = finalLineSize - (int)Math.floor(finalLineSize / 3);
                     int charCounter = 0;
@@ -436,10 +438,23 @@ public class Map {
                     return "";
                 }
             };
-            effects.add(new EffectDataPair(
-                    bookEffect,
-                    new ArrayList<>(List.of("book-text"))
-            ));
+            AtomicBoolean replaced = new AtomicBoolean(false);
+            effects.replaceAll(e -> {
+                if (e.effect.getIdentifier().equals("book-content")) {
+                    replaced.set(true);
+                    return new EffectDataPair(
+                            bookEffect,
+                            new ArrayList<>()
+                    );
+                }
+                return e;
+            });
+            if (!replaced.get()) {
+                effects.add(new EffectDataPair(
+                        bookEffect,
+                        new ArrayList<>()
+                ));
+            }
 
             player.sendMessage(Text.literal("§6Font: §r" + font), false);
             player.sendMessage(Text.literal("§6Font size: §r" + lineSize), false);
@@ -450,14 +465,14 @@ public class Map {
             player.sendMessage(Text.literal("§6Top side offset: §r" + leftOffset), false);
             player.sendMessage(Text.literal("§6Use dithering: §r" + dither), false);
             player.sendMessage(Text.literal("§6Procedure (top to bottom): §r"), false);
-            for(int l= 0; l < effects.size(); l++) {
-                player.sendMessage(Text.literal(" -> " + effects.get(l).effect().getIdentifier() + ", " + String.join(";", effects.get(l).data())), false);
+            for (EffectDataPair effect : effects) {
+                player.sendMessage(Text.literal(" -> " + effect.effect().getIdentifier() + ", " + String.join(",", effect.data())), false);
             }
             player.sendMessage(Text.literal("§6Generating..."), false);
 
             BufferedImage m = new BufferedImage(finalWidth, finalHeight, BufferedImage.TYPE_4BYTE_ABGR);
             try {
-                m = Map.compositeImage(player, new Map.CompositeEffects.CanvasData(finalWidth, finalHeight), effects);
+                m = Map.compositeImage(player, new CompositeEffects.CanvasData(finalWidth, finalHeight), effects);
             } catch (Exception e) {
                 Book2Map.Logger.warn("Map.compositeImage() failed: " + e.toString());
                 player.sendMessage(Text.literal("§cFailed to generate map! Check your settings!"), false);
@@ -500,380 +515,7 @@ public class Map {
     }
 
 
-    public static class CompositeEffects {
-        public interface CompositeEffect {
-            public String getIdentifier();
-            public String getDescription();
-            public String apply(Graphics2D g, CanvasData d, List<String> arguments);
-        }
 
-        public static CompositeEffect getByIdentifier(String identifier) {
-            for (CompositeEffect effect : effects) {
-                if (effect.getIdentifier().equals(identifier)) {
-                    return effect;
-                }
-            }
-            return NONE;
-        }
-
-        private static Color colorFromString(String color) {
-            if (color.isEmpty())
-            {
-                color = "black";
-            }
-            var temp = Formatting.byName(color.toUpperCase(Locale.ROOT));
-            if (temp == null) { temp = Formatting.BLACK; }
-            return new Color((temp.getColorValue() / 256 / 256) % 256, (temp.getColorValue() / 256) % 256, temp.getColorValue() % 256);
-        }
-
-        private static Color colorFromFormatting(Formatting color) {
-            if (!color.isColor()) { color = Formatting.BLACK; }
-            return new Color((color.getColorValue() / 256 / 256) % 256, (color.getColorValue() / 256) % 256, color.getColorValue() % 256);
-        }
-
-        public record CanvasData(int width, int height) {}
-
-        public static CompositeEffect BACKGROUND = new CompositeEffect() {
-            public String getIdentifier() {
-                return "background";
-            }
-            public String getDescription() {
-                return "fills the background with a solid color";
-            }
-            public String apply(Graphics2D g, CanvasData d, List<String> arguments) {
-                var color = arguments.get(0);
-                Random random = new Random();
-                if (color.isEmpty())
-                {
-                    color = "black";
-                }
-                if (color.equals("brown")) {
-                    g.setColor(new Color(50,40,40));
-                }
-                else
-                {
-                    var temp = Formatting.byName(color.toUpperCase(Locale.ROOT));
-                    if (temp == null) { temp = Formatting.BLACK; }
-                    g.setColor(new Color((temp.getColorValue() / 256 / 256) % 256, (temp.getColorValue() / 256) % 256, temp.getColorValue() % 256));
-                }
-                g.fillRect(0,0, d.width, d.height);
-                return "";
-            }
-        };
-
-        public static CompositeEffect BACKGROUND_RANDOM = new CompositeEffect() {
-            public String getIdentifier() {
-                return "background-random";
-            }
-            public String getDescription() {
-                return "sets the background to a random palette of a given color (or a fully random palette)";
-            }
-            public String apply(Graphics2D g, CanvasData d, List<String> arguments) {
-                var color = arguments.get(0);
-                Random random = new Random();
-                if (color.isEmpty())
-                {
-                    for (int i = 0; i <= d.width-2; i++) {
-                        for (int k = 0; k <= d.height-2; k++) {
-                            g.setColor(new Color(random.nextInt(256),random.nextInt(256),random.nextInt(256)));
-                            g.drawLine(i,k,i+1,k+1);
-                        }
-                    }
-                    return "";
-                }
-                if (color.equals("brown")) {
-                    for (int i = 0; i <= d.width-2; i++) {
-                        for (int k = 0; k <= d.height-2; k++) {
-                            g.setColor(new Color(50+random.nextInt(10),40+random.nextInt(10),40+random.nextInt(10)));
-                            g.drawLine(i,k,i+1,k+1);
-                        }
-                    }
-                    return "";
-                }
-                var temp = Formatting.byName(color.toUpperCase(Locale.ROOT));
-                if (temp == null) temp = Formatting.BLACK;
-                try {
-                    var R = (temp.getColorValue() / 256 / 256) % 256;
-                    var G = (temp.getColorValue() / 256) % 256;
-                    var B = temp.getColorValue() % 256;
-                    for (int i = 0; i <= d.width-2; i++) {
-                        for (int k = 0; k <= d.height-2; k++) {
-                            int Rn, Gn, Bn;
-                            if (R < 127) {
-                                Rn = R + random.nextInt(10);
-                            } else Rn = R - random.nextInt(10);
-                            if (G < 127) {
-                                Gn = G + random.nextInt(10);
-                            } else Gn = G - random.nextInt(10);
-                            if (B < 127) {
-                                Bn = B + random.nextInt(10);
-                            } else Bn = B - random.nextInt(10);
-                            g.setColor(new Color(Rn,Gn,Bn));
-                            g.drawLine(i,k,i+1,k+1);
-                        }
-                    }
-                } catch (Exception e) {
-                    Book2Map.Logger.warn(e.toString());
-                    return "Error while generating random color palette! This is probably a programming issue, so please report it!";
-                }
-                return "";
-            }
-        };
-
-        public static CompositeEffect BACKGROUND_TEXTURE = new CompositeEffect() {
-            public String getIdentifier() {
-                return "background-texture";
-            }
-            public String getDescription() {
-                return "sets the background to a texture image";
-            }
-            public String apply(Graphics2D g, CanvasData d, List<String> arguments) {
-                // check if pack exists
-                var texture = arguments.get(0);
-                Path baseDir = Path.of(FabricLoader.getInstance().getConfigDir().toString(),"survivalplus", "textures");
-                Path targetFile = Path.of(baseDir.toString(), texture + ".png");
-                BufferedImage image = new BufferedImage(32, 32, BufferedImage.TYPE_4BYTE_ABGR);
-                if (Files.exists(baseDir)) {
-                    try {
-                        image = ImageIO.read(targetFile.toFile());
-                    } catch (Exception ignored) {
-                        return "Error while loading texture! Please check if the texture file exists and try again.";
-                    }
-                }
-                Image resizedImage = image.getScaledInstance(d.width, d.height, Image.SCALE_DEFAULT);
-                BufferedImage resized = convertToBufferedImage(resizedImage);
-                g.drawImage(resized, 0, 0, d.width, d.height, null);
-                return "";
-            }
-        };
-        public static CompositeEffect FRAME = new CompositeEffect() {
-            public String getIdentifier() {
-                return "frame";
-            }
-            public String getDescription() {
-                return "creates a 4 pixel border around the image";
-            }
-
-            public String apply(Graphics2D g, CanvasData d, List<String> arguments) {
-                int thickness = 4;
-                g.setColor(colorFromString(arguments.get(0)));
-                g.fillRect(0,0, d.width-thickness, thickness); // top left -> top right
-                g.fillRect(0,0, thickness, d.height); // top left -> bottom left
-                g.fillRect(0,d.height-thickness, d.width,d.height-thickness); // bottom left -> bottom right
-                g.fillRect(d.width-thickness,0, d.width-thickness, d.height); // top right -> bottom right
-                return "";
-            }
-        };
-
-        public static CompositeEffect CIRCLE = new CompositeEffect() {
-            public String getIdentifier() {
-                return "circle";
-            }
-            public String getDescription() {
-                return "places a circle on the image";
-            }
-
-            public String apply(Graphics2D g, CanvasData d, List<String> arguments) {
-                Color color = Color.YELLOW;
-                int x = 0;
-                int y = 0;
-                int width = d.width();
-                int height = d.height();
-                boolean hollow = false;
-                if (!arguments.isEmpty()) {
-                    try {
-                        if (arguments.size() == 1) {
-                            color = colorFromString(arguments.get(0));
-                        }
-                        if (arguments.size() == 2) {
-                            color = colorFromString(arguments.get(0));
-                            x = Integer.parseInt(arguments.get(1));
-                        }
-                        if (arguments.size() == 3) {
-                            color = colorFromString(arguments.get(0));
-                            x = Integer.parseInt(arguments.get(1));
-                            y = Integer.parseInt(arguments.get(2));
-                        }
-                        if (arguments.size() == 4) {
-                            color = colorFromString(arguments.get(0));
-                            x = Integer.parseInt(arguments.get(1));
-                            y = Integer.parseInt(arguments.get(2));
-                            width = Integer.parseInt(arguments.get(3));
-                        }
-                        if (arguments.size() == 5) {
-                            color = colorFromString(arguments.get(0));
-                            x = Integer.parseInt(arguments.get(1));
-                            y = Integer.parseInt(arguments.get(2));
-                            width = Integer.parseInt(arguments.get(3));
-                            height = Integer.parseInt(arguments.get(4));
-                        }
-                        if (arguments.size() == 6) {
-                            color = colorFromString(arguments.get(0));
-                            x = Integer.parseInt(arguments.get(1));
-                            y = Integer.parseInt(arguments.get(2));
-                            width = Integer.parseInt(arguments.get(3));
-                            height = Integer.parseInt(arguments.get(4));
-                            hollow = true;
-                        }
-                    } catch (Exception ignored) {
-                        return "Error while parsing circle arguments! Remember to use this format: <color>,<x>,<y>,<width>,<height>,<hollow?>";
-                    }
-                }
-                Graphics2D g2 = (Graphics2D) g;
-                g2.setRenderingHint(RenderingHints.KEY_STROKE_CONTROL,
-                    RenderingHints.VALUE_STROKE_PURE);
-                g2.setColor(color);
-                var shape = new Ellipse2D.Double(x,y,width,height);
-                g2.draw(shape);
-                if (!hollow) {
-                    g2.fill(shape);
-                }
-                return "";
-            }
-        };
-
-        public static CompositeEffect RECTANGLE = new CompositeEffect() {
-            public String getIdentifier() {
-                return "rectangle";
-            }
-            public String getDescription() {
-                return "places a rectangle on the image";
-            }
-
-            public String apply(Graphics2D g, CanvasData d, List<String> arguments) {
-                Color color = Color.YELLOW;
-                int x = 0;
-                int y = 0;
-                int width = d.width();
-                int height = d.height();
-                boolean hollow = false;
-                if (!arguments.isEmpty()) {
-                    try {
-                        if (arguments.size() == 1) {
-                            color = colorFromString(arguments.get(0));
-                        }
-                        if (arguments.size() == 2) {
-                            color = colorFromString(arguments.get(0));
-                            x = Integer.parseInt(arguments.get(1));
-                        }
-                        if (arguments.size() == 3) {
-                            color = colorFromString(arguments.get(0));
-                            x = Integer.parseInt(arguments.get(1));
-                            y = Integer.parseInt(arguments.get(2));
-                        }
-                        if (arguments.size() == 4) {
-                            color = colorFromString(arguments.get(0));
-                            x = Integer.parseInt(arguments.get(1));
-                            y = Integer.parseInt(arguments.get(2));
-                            width = Integer.parseInt(arguments.get(3));
-                        }
-                        if (arguments.size() == 5) {
-                            color = colorFromString(arguments.get(0));
-                            x = Integer.parseInt(arguments.get(1));
-                            y = Integer.parseInt(arguments.get(2));
-                            width = Integer.parseInt(arguments.get(3));
-                            height = Integer.parseInt(arguments.get(4));
-                        }
-                        if (arguments.size() == 6) {
-                            color = colorFromString(arguments.get(0));
-                            x = Integer.parseInt(arguments.get(1));
-                            y = Integer.parseInt(arguments.get(2));
-                            width = Integer.parseInt(arguments.get(3));
-                            height = Integer.parseInt(arguments.get(4));
-                            hollow = true;
-                        }
-                    } catch (Exception ignored) {
-                        return "Error while parsing rectangle arguments! Remember to use this format: <color>,<x>,<y>,<width>,<height>,<hollow?>";
-                    }
-                }
-                Graphics2D g2 = (Graphics2D) g;
-                g2.setRenderingHint(RenderingHints.KEY_STROKE_CONTROL,
-                        RenderingHints.VALUE_STROKE_PURE);
-                g2.setColor(color);
-                var shape = new Rectangle(x,y,width,height);
-                g2.draw(shape);
-                if (!hollow) {
-                    g2.fill(shape);
-                }
-                return "";
-            }
-        };
-
-        public static CompositeEffect LINE = new CompositeEffect() {
-            public String getIdentifier() {
-                return "line";
-            }
-            public String getDescription() {
-                return "places a line on the image";
-            }
-
-            public String apply(Graphics2D g, CanvasData d, List<String> arguments) {
-                Color color = Color.YELLOW;
-                int x1 = 0;
-                int y1 = 0;
-                int x2 = 32;
-                int y2 = 32;
-                if (!arguments.isEmpty()) {
-                    try {
-                        if (arguments.size() == 1) {
-                            color = colorFromString(arguments.get(0));
-                        }
-                        if (arguments.size() == 2) {
-                            color = colorFromString(arguments.get(0));
-                            x1 = Integer.parseInt(arguments.get(1));
-                        }
-                        if (arguments.size() == 3) {
-                            color = colorFromString(arguments.get(0));
-                            x1 = Integer.parseInt(arguments.get(1));
-                            y1 = Integer.parseInt(arguments.get(2));
-                        }
-                        if (arguments.size() == 4) {
-                            color = colorFromString(arguments.get(0));
-                            x1 = Integer.parseInt(arguments.get(1));
-                            y1 = Integer.parseInt(arguments.get(2));
-                            x2 = Integer.parseInt(arguments.get(3));
-                        }
-                        if (arguments.size() == 5) {
-                            color = colorFromString(arguments.get(0));
-                            x1 = Integer.parseInt(arguments.get(1));
-                            y1 = Integer.parseInt(arguments.get(2));
-                            x2 = Integer.parseInt(arguments.get(3));
-                            y2 = Integer.parseInt(arguments.get(4));
-                        }
-                    } catch (Exception ignored) {
-                        return "Error while parsing line arguments! Remember to use this format: <color>,<x1>,<y1>,<x2>,<y2>";
-                    }
-                }
-                Graphics2D g2 = (Graphics2D) g;
-                g2.setRenderingHint(RenderingHints.KEY_STROKE_CONTROL,
-                        RenderingHints.VALUE_STROKE_PURE);
-                g2.setColor(color);
-                g2.drawLine(x1, y1, x2, y2);
-                return "";
-            }
-        };
-
-        public static CompositeEffect NONE = new CompositeEffect() {
-            public String getIdentifier() {
-                return "none";
-            }
-            public String getDescription() {
-                return "placeholder for missing effects";
-            }
-            public String apply(Graphics2D g, CanvasData d, List<String> arguments) { return "Placeholder effect was used, check your settings!"; }
-        };
-
-        public static final CompositeEffects.CompositeEffect[] effects = {
-                BACKGROUND,
-                BACKGROUND_RANDOM,
-                BACKGROUND_TEXTURE,
-                FRAME,
-                CIRCLE,
-                RECTANGLE,
-                LINE,
-                NONE
-        };
-    }
 }
 
 

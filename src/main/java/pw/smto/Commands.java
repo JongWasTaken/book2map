@@ -87,15 +87,15 @@ public class Commands {
                             .executes(context -> {
                                 StringBuilder b = new StringBuilder();
                                 b.append(TextHelper.GOLD + TextHelper.BOLD + "Book2Map Options" + "\n" + TextHelper.RESET + TextHelper.GOLD);
-                                b.append("The following settings are available:\n");
+                                b.append("The following options are available:\n");
                                 b.append(TextHelper.AQUA + "font" + TextHelper.GOLD + " - "+TextHelper.GREEN+"font name\n");
                                 b.append(TextHelper.AQUA + "size" + TextHelper.GOLD + " - "+TextHelper.GREEN+"text size\n");
                                 b.append(TextHelper.AQUA + "dither" + TextHelper.GOLD + " - "+TextHelper.GREEN+"whether to use dithering\n");
                                 b.append(TextHelper.AQUA + "color" + TextHelper.GOLD + " - "+TextHelper.GREEN+"text color\n");
                                 b.append(TextHelper.AQUA + "top" + TextHelper.GOLD + " - "+TextHelper.GREEN+"offset from the top in pixels\n");
                                 b.append(TextHelper.AQUA + "left" + TextHelper.GOLD + " - "+TextHelper.GREEN+"offset from the left side in pixels\n");
-                                b.append(TextHelper.AQUA + "width" + TextHelper.GOLD + " - "+TextHelper.GREEN+"image width in pixels\n");
-                                b.append(TextHelper.AQUA + "height" + TextHelper.GOLD + " - "+TextHelper.GREEN+"image height in pixels\n");
+                                b.append(TextHelper.AQUA + "width" + TextHelper.GOLD + " - "+TextHelper.GREEN+"image width in blocks\n");
+                                b.append(TextHelper.AQUA + "height" + TextHelper.GOLD + " - "+TextHelper.GREEN+"image height in blocks\n");
                                 b.append(TextHelper.AQUA + "effect" + TextHelper.GOLD + " - "+TextHelper.GREEN+"effect, see /b2m effects\n");
                                 b.append(TextHelper.GOLD + "\n");
                                 b.append("All options can also be shortened to the first letter (ex. font: -> f:).\n");
@@ -110,9 +110,9 @@ public class Commands {
                                 b.append(TextHelper.GOLD + TextHelper.BOLD + "Book2Map Effects" + "\n" + TextHelper.RESET + TextHelper.GOLD);
                                 b.append("The following effects are available:\n");
 
-                                var effects = new ArrayList<>(List.of(Map.CompositeEffects.effects));
+                                var effects = new ArrayList<>(List.of(CompositeEffects.effects));
                                 effects.remove(effects.size()-1);
-                                for (Map.CompositeEffects.CompositeEffect effect : effects) {
+                                for (CompositeEffects.CompositeEffect effect : effects) {
                                     b.append(TextHelper.AQUA + effect.getIdentifier() + TextHelper.GOLD + " - " + TextHelper.GREEN + effect.getDescription() + "\n");
                                 }
                                 context.getSource().sendFeedback(() -> Text.of(b.toString()), false);
@@ -124,7 +124,7 @@ public class Commands {
                                 StringBuilder b = new StringBuilder();
                                 b.append(TextHelper.GOLD + TextHelper.BOLD + "List of installed fonts" + "\n" + TextHelper.RESET);
                                 b.append("Any of these fonts should be usable with Book2Map:\n");
-                                for (Font font : Book2Map.FONTS) {
+                                for (Font font : Fonts.LIST) {
                                     b.append(TextHelper.AQUA + font.getFontName() + TextHelper.GOLD + "\n");
                                 }
                                 context.getSource().sendFeedback(() -> Text.of(b.toString()), false);
