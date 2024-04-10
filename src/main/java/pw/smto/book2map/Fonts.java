@@ -1,4 +1,4 @@
-package pw.smto;
+package pw.smto.book2map;
 
 import java.awt.*;
 import java.io.File;

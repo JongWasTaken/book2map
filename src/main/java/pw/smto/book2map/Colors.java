@@ -1,4 +1,4 @@
-package pw.smto;
+package pw.smto.book2map;
 
 import net.minecraft.util.Formatting;
 

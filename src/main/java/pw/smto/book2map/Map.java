@@ -2,7 +2,7 @@
 Parts of this file (mainly the rendering part) were taken from image2map (https://github.com/Patbox/Image2Map/blob/1.20.2/src/main/java/space/essem/image2map/renderer/MapRenderer.java)
  */
 
-package pw.smto;
+package pw.smto.book2map;
 
 import eu.pb4.mapcanvas.api.core.CanvasColor;
 import eu.pb4.mapcanvas.api.core.CanvasImage;
@@ -365,9 +365,13 @@ public class Map {
                 private int currentLine = 0;
                 public String apply(Graphics2D g, CompositeEffects.CanvasData d, List<String> unused) {
                     g.setColor(Color.WHITE);
-                    int charWidth = finalLineSize - (int)Math.floor(finalLineSize / 3);
+                    final int originalLineSize = finalLineSize;
+                    int charWidthModifier = 0;
+                    int currentLineSize = originalLineSize;
+                    int charWidth = 0;
                     int charCounter = 0;
                     boolean nextIsTag = false;
+                    boolean nextIsCustomTag = false;
                     Color currentColor = finalColor;
                     int currentFontType = Font.PLAIN;
                     master: for (String page : pages) {
@@ -375,10 +379,11 @@ public class Map {
                             currentColor = finalColor;
                             charCounter = 0;
                             currentLine++;
-                            if (currentLine * finalLineSize > d.height()) {
+                            if (currentLine * currentLineSize > d.height()) {
                                 break master;
                             }
                             for (char c : line.toCharArray()) {
+                                charWidth = currentLineSize - (int) (double) (currentLineSize / 3) + charWidthModifier;
                                 //Book2Map.Logger.warn("currentColor: " + currentColor);
                                 //Book2Map.Logger.warn("currentFontType: " + currentFontType);
                                 //Book2Map.Logger.warn("Current char: " + c);
@@ -387,6 +392,10 @@ public class Map {
                                     if (c == '§') {
                                         nextIsTag = true;
                                     }
+                                    //else if (c == '^') {
+                                    //    nextIsTag = true;
+                                    //    nextIsCustomTag = true;
+                                    //}
                                     else {
                                         //if (charCounter > 144) {
                                         //    currentLine++;
@@ -394,42 +403,60 @@ public class Map {
                                         //}
 
                                         g.setColor(currentColor);
-                                        g.setFont(new Font(finalFont, currentFontType, finalLineSize));
-                                        g.drawString(String.valueOf(c), finalLeftOffset + (charCounter * charWidth), finalTopOffset + (currentLine * finalLineSize));
+                                        g.setFont(new Font(finalFont, currentFontType, currentLineSize));
+                                        g.drawString(String.valueOf(c), finalLeftOffset + (charCounter * charWidth), finalTopOffset + (currentLine * currentLineSize));
                                         charCounter++;
                                     }
                                 } else {
-                                    var temp = Formatting.byCode(c);
-                                    if (temp != null) {
-                                        if (temp.isColor()) {
-                                            // 256*256*red+256*green+blue
-                                            currentColor = new Color((temp.getColorValue() / 256 / 256) % 256, (temp.getColorValue() / 256) % 256, temp.getColorValue() % 256);
+                                    if (nextIsCustomTag) {
+                                        if (c == '0') {
+                                            currentLineSize = originalLineSize;
+                                            charWidthModifier = 0;
                                         }
                                         else {
-                                            //Book2Map.Logger.warn("TAG IS NOT COLOR: " + temp.getName());
-                                            if(temp.getCode() == 'l') {
-                                                if (currentFontType == 0) {
-                                                    currentFontType = 1;
-                                                }
-                                                if (currentFontType == 2) {
-                                                    currentFontType = 3;
-                                                }
+                                            var temp = Integer.parseInt(String.valueOf(c));
+                                            currentLineSize = originalLineSize + temp;
+                                            // dirty ass hack: charCounter--; FIGURE OUT WHY THIS IS HAPPENING!
+                                            ///charWidthModifier = temp;// + (int) (double) (temp / 1.5) + 10;
+                                        }
+
+                                        nextIsTag = false;
+                                        nextIsCustomTag = false;
+                                    }
+                                    else {
+                                        var temp = Formatting.byCode(c);
+                                        if (temp != null) {
+                                            if (temp.isColor()) {
+                                                // 256*256*red+256*green+blue
+                                                currentColor = new Color((temp.getColorValue() / 256 / 256) % 256, (temp.getColorValue() / 256) % 256, temp.getColorValue() % 256);
                                             }
-                                            else if (temp.getCode() == 'o') {
-                                                if (currentFontType == 0) {
-                                                    currentFontType = 2;
+                                            else {
+                                                //Book2Map.Logger.warn("TAG IS NOT COLOR: " + temp.getName());
+                                                if(temp.getCode() == 'l') {
+                                                    if (currentFontType == 0) {
+                                                        currentFontType = 1;
+                                                    }
+                                                    if (currentFontType == 2) {
+                                                        currentFontType = 3;
+                                                    }
                                                 }
-                                                if (currentFontType == 1) {
-                                                    currentFontType = 3;
+                                                else if (temp.getCode() == 'o') {
+                                                    if (currentFontType == 0) {
+                                                        currentFontType = 2;
+                                                    }
+                                                    if (currentFontType == 1) {
+                                                        currentFontType = 3;
+                                                    }
                                                 }
-                                            }
-                                            else if (temp.getCode() == 'r') {
-                                                currentColor = finalColor;
-                                                currentFontType = 0;
+                                                else if (temp.getCode() == 'r') {
+                                                    currentColor = finalColor;
+                                                    currentFontType = 0;
+                                                    currentLineSize = originalLineSize;
+                                                }
                                             }
                                         }
+                                        nextIsTag = false;
                                     }
-                                    nextIsTag = false;
                                 }
                             }
                         }

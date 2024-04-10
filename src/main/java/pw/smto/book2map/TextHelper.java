@@ -1,4 +1,4 @@
-package pw.smto;
+package pw.smto.book2map;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;

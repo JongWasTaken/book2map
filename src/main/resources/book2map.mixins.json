@@ -1,8 +1,8 @@
 {
   "required": true,
-  "package": "pw.smto.mixin",
+  "package": "pw.smto.book2map.mixin",
   "compatibilityLevel": "JAVA_17",
-  "plugin": "pw.smto.MixinPlugin",
+  "plugin": "pw.smto.book2map.MixinPlugin",
   "mixins": [
     "BundleItemMixin",
     "ItemFrameEntityMixin"

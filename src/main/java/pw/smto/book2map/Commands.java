@@ -1,4 +1,4 @@
-package pw.smto;
+package pw.smto.book2map;
 
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;

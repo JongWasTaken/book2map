@@ -1,5 +1,5 @@
 // Taken from https://github.com/Juuxel/Adorn/blob/bd70a2955640897bc68ff1f4f201fe5e6c10bc32/fabric/src/main/java/juuxel/adorn/AdornMixinPlugin.java
-package pw.smto;
+package pw.smto.book2map;
 
 import com.google.common.collect.ImmutableMap;
 import net.fabricmc.loader.api.FabricLoader;

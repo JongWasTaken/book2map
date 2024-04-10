@@ -3,7 +3,7 @@ Taken from https://github.com/Patbox/Image2Map/blob/1.20.2/src/main/java/space/e
 This mixin will only be applied if image2map is not loaded, as book2map behaves the same way and needs it.
  */
 
-package pw.smto.mixin;
+package pw.smto.book2map.mixin;
 
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.decoration.ItemFrameEntity;

@@ -1,7 +1,7 @@
-package pw.smto;
+package pw.smto.book2map;
 
 import net.fabricmc.api.ModInitializer;
-import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
+import net.fabricmc.fabric.api.command.v1.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.loader.api.FabricLoader;
 import org.slf4j.LoggerFactory;
@@ -37,7 +37,7 @@ public class Book2Map implements ModInitializer {
 
 		//ServerLifecycleEvents.SERVER_STARTED.register(Commands::register);
 
-		CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> {
+		CommandRegistrationCallback.EVENT.register((dispatcher, environment) -> {
 			Commands.register(dispatcher);
 		});
 		Logger.info("book2map loaded!");
