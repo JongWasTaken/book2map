@@ -1,8 +1,10 @@
 package pw.smto;
 
+import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import net.minecraft.item.Items;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.command.ServerCommandSource;
 import net.minecraft.text.ClickEvent;
 import net.minecraft.text.MutableText;
 import net.minecraft.text.Style;
@@ -22,11 +24,17 @@ public class Commands {
     private static boolean initialized = false;
 
     public static void register(MinecraftServer server) {
-        if (!initialized)
-        {
+        if (!initialized) {
             initialized = true;
+            register(server.getCommandManager().getDispatcher());
+            server.getPlayerManager().getPlayerList().forEach(spe -> {
+                server.getCommandManager().sendCommandTree(spe);
+            });
+        }
+    }
 
-            server.getCommandManager().getDispatcher().register(literal("b2m")
+        public static void register(CommandDispatcher<ServerCommandSource> dispatcher) {
+            dispatcher.register(literal("b2m")
                     .executes(context -> {
                         context.getSource().sendFeedback(() -> Text.of(
                                 TextHelper.GOLD + TextHelper.BOLD + "Book2Map" + "\n" + TextHelper.RESET +
@@ -141,9 +149,5 @@ public class Commands {
                     )
             );
 
-            server.getPlayerManager().getPlayerList().forEach(spe -> {
-                server.getCommandManager().sendCommandTree(spe);
-            });
-        }
     }
 }
