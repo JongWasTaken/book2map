@@ -338,6 +338,73 @@ public class CompositeEffects {
         }
     };
 
+    public static CompositeEffect TEXTURE = new CompositeEffect() {
+        public String getIdentifier() {
+            return "texture";
+        }
+        public String getDescription() {
+            return "places a texture on the image";
+        }
+
+        public String apply(Graphics2D g, CanvasData d, java.util.List<String> arguments) {
+            String texture = "";
+            int x = 0;
+            int y = 0;
+            int width = d.width();
+            int height = d.height();
+            if (!arguments.isEmpty()) {
+                try {
+                    if (arguments.size() == 1) {
+                        texture = arguments.get(0);
+                    }
+                    if (arguments.size() == 2) {
+                        texture = arguments.get(0);
+                        x = Integer.parseInt(arguments.get(1));
+                    }
+                    if (arguments.size() == 3) {
+                        texture = arguments.get(0);
+                        x = Integer.parseInt(arguments.get(1));
+                        y = Integer.parseInt(arguments.get(2));
+                    }
+                    if (arguments.size() == 4) {
+                        texture = arguments.get(0);
+                        x = Integer.parseInt(arguments.get(1));
+                        y = Integer.parseInt(arguments.get(2));
+                        width = Integer.parseInt(arguments.get(3));
+                    }
+                    if (arguments.size() == 5) {
+                        texture = arguments.get(0);
+                        x = Integer.parseInt(arguments.get(1));
+                        y = Integer.parseInt(arguments.get(2));
+                        width = Integer.parseInt(arguments.get(3));
+                        height = Integer.parseInt(arguments.get(4));
+                    }
+                } catch (Exception ignored) {
+                    return "Error while parsing rectangle arguments! Remember to use this format: <texture>,<x>,<y>,<width>,<height>";
+                }
+            }
+
+            Path targetFile = Path.of(Book2Map.CONFIG_TEXTURES_DIR.toString(), texture + ".png");
+            BufferedImage image = new BufferedImage(32, 32, BufferedImage.TYPE_4BYTE_ABGR);
+            if (Files.exists(targetFile)) {
+                try {
+                    image = ImageIO.read(targetFile.toFile());
+                } catch (Exception e) {
+                    Book2Map.Logger.error(e.toString());
+                    return "Error while loading texture! This might indicate a server issue.";
+                }
+            }
+            else {
+                return "Specified texture does not exist! Please check your spelling.";
+            }
+            Image resizedImage = image.getScaledInstance(width, height, Image.SCALE_DEFAULT);
+            BufferedImage resized = Map.convertToBufferedImage(resizedImage);
+            g.drawImage(resized, x, y, width, height, null);
+            return "";
+        }
+    };
+
+
     public static CompositeEffect BOOK_CONTENT = new CompositeEffect() {
         public String getIdentifier() {
             return "book-content";
@@ -370,6 +437,7 @@ public class CompositeEffects {
             CIRCLE,
             RECTANGLE,
             LINE,
+            TEXTURE,
             BOOK_CONTENT,
             NONE
     };

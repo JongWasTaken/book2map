@@ -24,10 +24,8 @@ public class Fonts {
         // system fonts
         var fonts = env.getAllFonts();
         for (Font font : fonts) {
-            if (font.getFontName().contains("Mono")) {
-                if (!font.getFontName().contains("Bold") && !font.getFontName().contains("Italic")) {
-                    f.add(font);
-                }
+            if (!font.getFontName().contains("Bold") && !font.getFontName().contains("Italic")) {
+                f.add(font);
             }
         }
 
