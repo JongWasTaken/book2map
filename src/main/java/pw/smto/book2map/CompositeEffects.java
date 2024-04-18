@@ -380,7 +380,7 @@ public class CompositeEffects {
                         height = Integer.parseInt(arguments.get(4));
                     }
                 } catch (Exception ignored) {
-                    return "Error while parsing rectangle arguments! Remember to use this format: <texture>,<x>,<y>,<width>,<height>";
+                    return "Error while parsing texture arguments! Remember to use this format: <texture>,<x>,<y>,<width>,<height>";
                 }
             }
 

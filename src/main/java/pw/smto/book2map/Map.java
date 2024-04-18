@@ -235,7 +235,7 @@ public class Map {
             // defaults
             String font = Fonts.LIST.get(0).getFontName();
             for (Font xfont : Fonts.LIST) {
-                if (xfont.getFontName().contains("Monocraft")) {
+                if (xfont.getFontName().equals("Minecraft")) {
                     font = xfont.getFontName();
                     break;
                 }

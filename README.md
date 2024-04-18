@@ -10,4 +10,5 @@ Licensed under the MIT license.
 Code from the following projects has been used:
 - [image2map](https://github.com/PatBox/image2map) - Renderer, Mixins, Canvas API, licensed under MIT License
 - [Adorn](https://github.com/Juuxel/Adorn/) - MixinPlugin, licensed under MIT License
-- [Monocraft](https://github.com/IdreesInc/Monocraft) - included as the default font, licensed under SIL OPEN FONT LICENSE Version 1.1
+- [Minecraft-Font](https://github.com/IdreesInc/Minecraft-Font) - included as the default font, licensed under SIL OPEN FONT LICENSE Version 1.1
+- [Monocraft](https://github.com/IdreesInc/Monocraft) - included as a font, licensed under SIL OPEN FONT LICENSE Version 1.1
