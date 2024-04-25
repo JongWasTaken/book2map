@@ -4,6 +4,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtString;
 import net.minecraft.util.Formatting;
 import java.util.Locale;
@@ -36,7 +37,13 @@ public class TextHelper {
     public static final String WHITE = "§f";
 
 
-    public static String convertTextCompound(NbtString n) {
+    public static String convertTextCompound(String raw) {
+
+        // TODO: debug this, wait for sgui update
+        Book2Map.Logger.error(raw);
+        if (true) return raw;
+
+        NbtCompound n = new NbtCompound();
         JsonObject rootObj;
         try {
             rootObj = JsonParser.parseString(n.asString()).getAsJsonObject();

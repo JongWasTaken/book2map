@@ -7,6 +7,11 @@ package pw.smto.book2map;
 import eu.pb4.mapcanvas.api.core.CanvasColor;
 import eu.pb4.mapcanvas.api.core.CanvasImage;
 import eu.pb4.mapcanvas.api.utils.CanvasUtils;
+import net.minecraft.component.DataComponentType;
+import net.minecraft.component.DataComponentTypes;
+import net.minecraft.component.type.BundleContentsComponent;
+import net.minecraft.component.type.LoreComponent;
+import net.minecraft.component.type.NbtComponent;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.FilledMapItem;
 import net.minecraft.item.ItemStack;
@@ -86,19 +91,17 @@ public class Map {
                         }
                     }
                 }
-
-                world.putMapState(FilledMapItem.getMapName(id), state);
+                world.putMapState(id, state);
 
                 var stack = new ItemStack(Items.FILLED_MAP);
-                stack.getOrCreateNbt().putInt("map", id);
-                var lore = new NbtList();
-                lore.add(NbtString.of(Text.Serializer.toJson(Text.literal(xs + " / " + ys).formatted(Formatting.GRAY))));
-                lore.add(NbtString.of(Text.Serializer.toJson(Text.literal(url))));
-                stack.getOrCreateNbt().putInt("image2map:x", xs);
-                stack.getOrCreateNbt().putInt("image2map:y", ys);
-                stack.getOrCreateNbt().putInt("image2map:width", xSections);
-                stack.getOrCreateNbt().putInt("image2map:height", ySections);
-                stack.getOrCreateSubNbt("display").put("Lore", lore);
+                stack.set(DataComponentTypes.MAP_ID, id);
+                //stack.getOrCreateNbt().putInt("map", id);
+                NbtCompound n = new NbtCompound();
+                n.putInt("image2map:x", xs);
+                n.putInt("image2map:y", ys);
+                n.putInt("image2map:width", xSections);
+                n.putInt("image2map:height", ySections);
+                stack.set(DataComponentTypes.CUSTOM_DATA, NbtComponent.of(n));
                 items.add(stack);
             }
         }
@@ -218,15 +221,15 @@ public class Map {
             return;
         }
         if(offhandStack.getItem().equals(Items.WRITABLE_BOOK) || offhandStack.getItem().equals(Items.WRITTEN_BOOK)) {
-            var x = offhandStack.getNbt();
-            if(!x.contains("pages")) {
+            var x = offhandStack.getComponents().get(DataComponentTypes.WRITABLE_BOOK_CONTENT).pages();
+            if(x.isEmpty()) {
                 player.sendMessage(Text.literal("§6Book is empty!"), false);
                 return;
             }
 
             List<String> pages = new ArrayList<>();
-            x.getList("pages", NbtElement.STRING_TYPE).copy().forEach((nbtElement -> {
-                pages.add(TextHelper.convertTextCompound((NbtString)nbtElement).replace("@@","§"));
+            x.forEach((pair -> {
+                pages.add(TextHelper.convertTextCompound(pair.raw()).replace("@@","§"));
             }));
 
             ArrayList<EffectDataPair> effects = new ArrayList<EffectDataPair>();
@@ -519,27 +522,17 @@ public class Map {
             player.giveItemStack(items.get(0));
         } else {
             var bundle = new ItemStack(Items.BUNDLE);
-            var list = new NbtList();
-
-            for (var item : items) {
-                list.add(item.writeNbt(new NbtCompound()));
-            }
-            bundle.getOrCreateNbt().put("Items", list);
-            bundle.getOrCreateNbt().putBoolean("image2map:quick_place", true);
-            bundle.getOrCreateNbt().putInt("image2map:width", MathHelper.ceil(width / 128d));
-            bundle.getOrCreateNbt().putInt("image2map:height", MathHelper.ceil(height / 128d));
-
-            var lore = new NbtList();
-            lore.add(NbtString.of(Text.Serializer.toJson(Text.literal(loreText))));
-            bundle.getOrCreateSubNbt("display").put("Lore", lore);
-            bundle.setCustomName(Text.literal("Maps").formatted(Formatting.GOLD));
-
+            bundle.set(DataComponentTypes.BUNDLE_CONTENTS, new BundleContentsComponent(items));
+            bundle.set(DataComponentTypes.LORE, new LoreComponent(List.of(Text.literal(loreText))));
+            bundle.set(DataComponentTypes.CUSTOM_NAME, Text.literal("Maps").formatted(Formatting.GOLD));
+            NbtCompound n = new NbtCompound();
+            n.putBoolean("image2map:quick_place", true);
+            n.putInt("image2map:width", MathHelper.ceil(width / 128d));
+            n.putInt("image2map:height", MathHelper.ceil(height / 128d));
+            bundle.set(DataComponentTypes.CUSTOM_DATA, NbtComponent.of(n));
             player.giveItemStack(bundle);
         }
     }
-
-
-
 }
 
 

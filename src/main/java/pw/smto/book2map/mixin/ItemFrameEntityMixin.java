@@ -5,6 +5,8 @@ This mixin will only be applied if image2map is not loaded, as book2map behaves 
 
 package pw.smto.book2map.mixin;
 
+import net.minecraft.component.DataComponentTypes;
+import net.minecraft.component.type.NbtComponent;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.decoration.ItemFrameEntity;
 import net.minecraft.entity.player.PlayerEntity;
@@ -12,6 +14,7 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtElement;
+import net.minecraft.registry.RegistryWrapper;
 import net.minecraft.util.ActionResult;
 import net.minecraft.util.Hand;
 
@@ -25,6 +28,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
+import pw.smto.book2map.Book2Map;
 
 import java.util.Arrays;
 
@@ -56,12 +60,12 @@ public class ItemFrameEntityMixin {
 
     private static boolean clickItemFrame(PlayerEntity player, Hand hand, ItemFrameEntity itemFrameEntity) {
         var stack = player.getStackInHand(hand);
-
-        if (stack.hasNbt() && stack.isOf(Items.BUNDLE) && stack.getNbt().getBoolean("image2map:quick_place")) {
+        var stackNBT = stack.getOrDefault(DataComponentTypes.CUSTOM_DATA, NbtComponent.DEFAULT).copyNbt();
+        if (!stackNBT.isEmpty() && stack.isOf(Items.BUNDLE) && stackNBT.getBoolean("image2map:quick_place")) {
             var world = itemFrameEntity.getWorld();
             var start = itemFrameEntity.getBlockPos();
-            var width = stack.getNbt().getInt("image2map:width");
-            var height = stack.getNbt().getInt("image2map:height");
+            var width = stackNBT.getInt("image2map:width");
+            var height = stackNBT.getInt("image2map:height");
 
             var frames = new ItemFrameEntity[width * height];
 
@@ -100,21 +104,25 @@ public class ItemFrameEntityMixin {
                 }
             }
 
-            for (var nbt : stack.getNbt().getList("Items", NbtElement.COMPOUND_TYPE)) {
-                var map = ItemStack.fromNbt((NbtCompound) nbt);
 
-                if (map.hasNbt()) {
-                    var x = map.getNbt().getInt("image2map:x");
-                    var y = map.getNbt().getInt("image2map:y");
 
-                    map.getNbt().putString("image2map:right", right.asString());
-                    map.getNbt().putString("image2map:down", down.asString());
-                    map.getNbt().putString("image2map:facing", facing.asString());
+            for (var mapStack : stack.get(DataComponentTypes.BUNDLE_CONTENTS).stream().toList()) {
+                var map = mapStack.getOrDefault(DataComponentTypes.CUSTOM_DATA, NbtComponent.DEFAULT).copyNbt();
+                //Book2Map.Logger.warn(map.toString());
+                if (!map.isEmpty()) {
+                    var x = map.getInt("image2map:x");
+                    var y = map.getInt("image2map:y");
+
+                    map.putString("image2map:right", right.asString());
+                    map.putString("image2map:down", down.asString());
+                    map.putString("image2map:facing", facing.asString());
+
+                    mapStack.set(DataComponentTypes.CUSTOM_DATA,NbtComponent.of(map));
 
                     var frame = frames[x + y * width];
 
                     if (frame != null && frame.getHeldItemStack().isEmpty()) {
-                        frame.setHeldItemStack(map);
+                        frame.setHeldItemStack(mapStack);
                         frame.setRotation(rot);
                         frame.setInvisible(true);
                     }
@@ -130,8 +138,11 @@ public class ItemFrameEntityMixin {
     }
 
     private static boolean destroyItemFrame(Entity player, ItemFrameEntity itemFrameEntity) {
+        //if (true) return false;
         var stack = itemFrameEntity.getHeldItemStack();
-        var tag = stack.getNbt();
+        var tag = stack.getOrDefault(DataComponentTypes.CUSTOM_DATA, NbtComponent.DEFAULT).copyNbt();
+
+        //Book2Map.Logger.error(tag.toString());
 
         String[] requiredTags = new String[] { "image2map:x", "image2map:y", "image2map:width", "image2map:height",
                 "image2map:right", "image2map:down", "image2map:facing" };

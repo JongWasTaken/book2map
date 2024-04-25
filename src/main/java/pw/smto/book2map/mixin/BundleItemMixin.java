@@ -5,6 +5,8 @@ This mixin will only be applied if image2map is not loaded, as book2map behaves 
 
 package pw.smto.book2map.mixin;
 
+import net.minecraft.component.DataComponentTypes;
+import net.minecraft.component.type.NbtComponent;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -27,7 +29,7 @@ public class BundleItemMixin {
     private void use(World world, PlayerEntity user, Hand hand,
                                      CallbackInfoReturnable<TypedActionResult<ItemStack>> cir) {
         ItemStack itemStack = user.getStackInHand(hand);
-        var tag = itemStack.getNbt();
+        var tag = itemStack.getOrDefault(DataComponentTypes.CUSTOM_DATA, NbtComponent.DEFAULT).copyNbt();
 
         if (tag != null && tag.contains("image2map:quick_place") && !user.isCreative()) {
             cir.setReturnValue(TypedActionResult.fail(itemStack));
@@ -38,7 +40,7 @@ public class BundleItemMixin {
     @Inject(method = "onStackClicked", at = @At("HEAD"), cancellable = true)
     private void onStackClicked(ItemStack bundle, Slot slot, ClickType clickType, PlayerEntity player,
                                           CallbackInfoReturnable<Boolean> cir) {
-        var tag = bundle.getNbt();
+        var tag = bundle.getOrDefault(DataComponentTypes.CUSTOM_DATA, NbtComponent.DEFAULT).copyNbt();
 
         if (tag != null && tag.contains("image2map:quick_place") && !player.isCreative()) {
             cir.setReturnValue(false);
@@ -50,7 +52,7 @@ public class BundleItemMixin {
     private void onClicked(ItemStack bundle, ItemStack otherStack, Slot slot, ClickType clickType,
                                              PlayerEntity player, StackReference cursorStackReference,
                                              CallbackInfoReturnable<Boolean> cir) {
-        var tag = bundle.getNbt();
+        var tag = bundle.getOrDefault(DataComponentTypes.CUSTOM_DATA, NbtComponent.DEFAULT).copyNbt();
         if (tag != null && tag.contains("image2map:quick_place") && !player.isCreative()) {
             cir.setReturnValue(false);
             cir.cancel();
