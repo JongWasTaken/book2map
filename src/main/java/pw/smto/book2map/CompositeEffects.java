@@ -13,7 +13,7 @@ public class CompositeEffects {
     public interface CompositeEffect {
         public String getIdentifier();
         public String getDescription();
-        public String apply(Graphics2D g, CanvasData d, java.util.List<String> arguments);
+        public String apply(Graphics2D g, CanvasData d, List<String> arguments);
     }
 
     public static CompositeEffect getByIdentifier(String identifier) {
@@ -34,7 +34,7 @@ public class CompositeEffects {
         public String getDescription() {
             return "fills the background with a solid color";
         }
-        public String apply(Graphics2D g, CanvasData d, java.util.List<String> arguments) {
+        public String apply(Graphics2D g, CanvasData d, List<String> arguments) {
             g.setColor(Colors.fromString(arguments.get(0)));
             g.fillRect(0,0, d.width, d.height);
             return "";
@@ -48,7 +48,7 @@ public class CompositeEffects {
         public String getDescription() {
             return "sets the background to a random palette of a given color (or a fully random palette)";
         }
-        public String apply(Graphics2D g, CanvasData d, java.util.List<String> arguments) {
+        public String apply(Graphics2D g, CanvasData d, List<String> arguments) {
             var color = arguments.get(0);
             Random random = new Random();
             if (color.isEmpty())
@@ -97,10 +97,37 @@ public class CompositeEffects {
         public String getDescription() {
             return "sets the background to a texture image";
         }
-        public String apply(Graphics2D g, CanvasData d, java.util.List<String> arguments) {
+        public String apply(Graphics2D g, CanvasData d, List<String> arguments) {
             // check if pack exists
-            var texture = arguments.get(0);
-            Path targetFile = Path.of(Book2Map.CONFIG_TEXTURES_DIR.toString(), texture + ".png");
+            var texture = "";
+            boolean tile = false;
+            int tileSizeMultiplier = 1;
+
+            if (arguments.size() == 1) {
+                texture = arguments.get(0);
+            }
+            else if (arguments.size() == 2) {
+                texture = arguments.get(0);
+                try {
+                    if (Integer.parseInt(arguments.get(1)) == 1) tile = true;
+                } catch (Exception e) {
+                    tile = Boolean.parseBoolean(arguments.get(1));
+                }
+            }
+            else if (arguments.size() == 3) {
+                texture = arguments.get(0);
+                try {
+                    if (Integer.parseInt(arguments.get(1)) == 1) tile = true;
+                } catch (Exception e) {
+                    tile = Boolean.parseBoolean(arguments.get(1));
+                }
+                try {
+                    tileSizeMultiplier = Integer.parseInt(arguments.get(2));
+                } catch (Exception e) {
+                    return "Error while parsing tile size multiplier argument!";
+                }
+            }
+            Path targetFile = Path.of(Book2Map.CONFIG_TEXTURES_DIR.toString(), texture.trim() + ".png");
             BufferedImage image = new BufferedImage(32, 32, BufferedImage.TYPE_4BYTE_ABGR);
             if (Files.exists(targetFile)) {
                 try {
@@ -113,9 +140,30 @@ public class CompositeEffects {
             else {
                 return "Error while loading texture! Please check your spelling.";
             }
-            Image resizedImage = image.getScaledInstance(d.width, d.height, Image.SCALE_DEFAULT);
-            BufferedImage resized = Map.convertToBufferedImage(resizedImage);
-            g.drawImage(resized, 0, 0, d.width, d.height, null);
+            // tile, else fill
+            if (tile) {
+                BufferedImage out = Map.convertToBufferedImage(image.getScaledInstance(image.getWidth() * tileSizeMultiplier, image.getHeight() * tileSizeMultiplier, Image.SCALE_DEFAULT));
+                int wCurrent = 0, hCurrent = 0;
+                while (hCurrent < d.height) {
+                    while (wCurrent < d.width) {
+                        g.drawImage(
+                                out,
+                                wCurrent, hCurrent,
+                                out.getWidth(), out.getHeight(),
+                                null);
+                        wCurrent += out.getWidth();
+                    }
+                    wCurrent = 0;
+                    hCurrent += out.getHeight();
+                    if (hCurrent >= d.height) {
+                        break;
+                    }
+                }
+            } else {
+                BufferedImage out = Map.convertToBufferedImage(image.getScaledInstance(d.width, d.height, Image.SCALE_DEFAULT));
+                g.drawImage(out, 0, 0, d.width, d.height, null);
+            }
+
             return "";
         }
     };
@@ -127,7 +175,7 @@ public class CompositeEffects {
             return "creates a 4 pixel border around the image";
         }
 
-        public String apply(Graphics2D g, CanvasData d, java.util.List<String> arguments) {
+        public String apply(Graphics2D g, CanvasData d, List<String> arguments) {
             int thickness = 4;
             Color c = Color.YELLOW;
             if (arguments.size() == 1) {
@@ -158,7 +206,7 @@ public class CompositeEffects {
             return "places a circle on the image";
         }
 
-        public String apply(Graphics2D g, CanvasData d, java.util.List<String> arguments) {
+        public String apply(Graphics2D g, CanvasData d, List<String> arguments) {
             Color color = Color.YELLOW;
             int x = 0;
             int y = 0;
@@ -225,7 +273,7 @@ public class CompositeEffects {
             return "places a rectangle on the image";
         }
 
-        public String apply(Graphics2D g, CanvasData d, java.util.List<String> arguments) {
+        public String apply(Graphics2D g, CanvasData d, List<String> arguments) {
             Color color = Color.YELLOW;
             int x = 0;
             int y = 0;
@@ -292,7 +340,7 @@ public class CompositeEffects {
             return "places a line on the image";
         }
 
-        public String apply(Graphics2D g, CanvasData d, java.util.List<String> arguments) {
+        public String apply(Graphics2D g, CanvasData d, List<String> arguments) {
             Color color = Color.YELLOW;
             int x1 = 0;
             int y1 = 0;
@@ -346,7 +394,7 @@ public class CompositeEffects {
             return "places a texture on the image";
         }
 
-        public String apply(Graphics2D g, CanvasData d, java.util.List<String> arguments) {
+        public String apply(Graphics2D g, CanvasData d, List<String> arguments) {
             String texture = "";
             int x = 0;
             int y = 0;
@@ -429,7 +477,7 @@ public class CompositeEffects {
         }
     };
 
-    public static final CompositeEffects.CompositeEffect[] effects = {
+    public static final CompositeEffect[] effects = {
             BACKGROUND,
             BACKGROUND_RANDOM,
             BACKGROUND_TEXTURE,

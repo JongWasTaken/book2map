@@ -7,20 +7,15 @@ package pw.smto.book2map;
 import eu.pb4.mapcanvas.api.core.CanvasColor;
 import eu.pb4.mapcanvas.api.core.CanvasImage;
 import eu.pb4.mapcanvas.api.utils.CanvasUtils;
-import net.minecraft.component.DataComponentType;
 import net.minecraft.component.DataComponentTypes;
 import net.minecraft.component.type.BundleContentsComponent;
 import net.minecraft.component.type.LoreComponent;
 import net.minecraft.component.type.NbtComponent;
 import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.item.FilledMapItem;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
 import net.minecraft.item.map.MapState;
 import net.minecraft.nbt.NbtCompound;
-import net.minecraft.nbt.NbtElement;
-import net.minecraft.nbt.NbtList;
-import net.minecraft.nbt.NbtString;
 import net.minecraft.registry.RegistryKey;
 import net.minecraft.registry.RegistryKeys;
 import net.minecraft.server.network.ServerPlayerEntity;
@@ -74,11 +69,11 @@ public class Map {
 
         for (int ys = 0; ys < ySections; ys++) {
             for (int xs = 0; xs < xSections; xs++) {
-                var id = world.getNextMapId();
+                var id = world.increaseAndGetMapId();
                 var state = MapState.of(
                         0, 0, (byte) 0,
                         false, false,
-                        RegistryKey.of(RegistryKeys.WORLD, new Identifier("image2map", "generated"))
+                        RegistryKey.of(RegistryKeys.WORLD, Identifier.of("image2map", "generated"))
                 );
 
                 for (int xl = 0; xl < 128; xl++) {
@@ -249,6 +244,7 @@ public class Map {
             int leftOffset = 8;
             int topOffset = 10;
             boolean dither = false;
+            boolean aa = true;
             Color color = Color.WHITE;
             effects.add(new EffectDataPair(CompositeEffects.BACKGROUND_RANDOM, new ArrayList<>(List.of("brown"))));
             effects.add(new EffectDataPair(CompositeEffects.FRAME, new ArrayList<>(List.of("black"))));
@@ -296,6 +292,13 @@ public class Map {
                                 dither = true;
                             }
                             else dither = false;
+                            continue;
+                        }
+                        if (line[0].equals("aa") || line[0].equals("a") || line[0].equals("anti-aliasing") || line[0].equals("antialiasing")) {
+                            if (line[1].trim().equals("false") || line[1].trim().equals("off") || line[1].trim().equals("0")) {
+                                aa = false;
+                            }
+                            else aa = true;
                             continue;
                         }
                         if (line[0].equals("width") || line[0].equals("w")) {
@@ -361,6 +364,7 @@ public class Map {
             int finalWidth = width;
             int finalHeight = height;
             boolean finalDither = dither;
+            boolean finalAa = aa;
 
             var bookEffect = new CompositeEffects.CompositeEffect() {
                 public String getIdentifier() {return "book-content";}
@@ -422,6 +426,9 @@ public class Map {
                                         currentFont = finalFont.deriveFont(currentFontType, finalLineSize + fontSizeModifier);
                                         g.setColor(currentColor);
                                         g.setFont(currentFont);
+                                        if (finalAa) {
+                                            g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+                                        } else g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_OFF);
                                         g.drawString(String.valueOf(c), currentXPosition, currentYPosition);
                                         currentXPosition = currentXPosition + g.getFontMetrics(currentFont).charWidth(c);
                                     }
