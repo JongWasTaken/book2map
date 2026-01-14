@@ -1,6 +1,7 @@
 package dev.smto.book2map;
 
 import com.mojang.brigadier.CommandDispatcher;
+import net.minecraft.command.DefaultPermissions;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.command.ServerCommandSource;
 import net.minecraft.text.ClickEvent;
@@ -136,7 +137,7 @@ public class Commands {
                         })
                 )
                 .then(literal("reload")
-                        .requires(s -> s.hasPermissionLevel(3))
+                        .requires(s -> s.getPermissions().hasPermission(DefaultPermissions.ADMINS))
                         .executes(context -> {
                             Fonts.reload();
                             context.getSource().sendFeedback(() -> Text.of(TextHelper.GOLD + "Reloaded book2map!"), false);
