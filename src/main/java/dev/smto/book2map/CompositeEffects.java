@@ -1,4 +1,4 @@
-package pw.smto.book2map;
+package dev.smto.book2map;
 
 import javax.imageio.ImageIO;
 import java.awt.*;

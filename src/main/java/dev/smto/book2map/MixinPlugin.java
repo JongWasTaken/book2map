@@ -1,5 +1,5 @@
 // Taken from https://github.com/Juuxel/Adorn/blob/bd70a2955640897bc68ff1f4f201fe5e6c10bc32/fabric/src/main/java/juuxel/adorn/AdornMixinPlugin.java
-package pw.smto.book2map;
+package dev.smto.book2map;
 
 import com.google.common.collect.ImmutableMap;
 import net.fabricmc.loader.api.FabricLoader;
@@ -16,8 +16,8 @@ public final class MixinPlugin implements IMixinConfigPlugin {
     private static final Supplier<Boolean> TRUE = () -> true;
 
     private static final Map<String, Supplier<Boolean>> CONDITIONS = ImmutableMap.of(
-            "pw.smto.mixin.BundleItemMixin", () -> !FabricLoader.getInstance().isModLoaded("image2map"),
-            "pw.smto.mixin.ItemFrameEntityMixin", () -> !FabricLoader.getInstance().isModLoaded("image2map")
+            "dev.smto.mixin.BundleItemMixin", () -> !FabricLoader.getInstance().isModLoaded("image2map"),
+            "dev.smto.mixin.ItemFrameEntityMixin", () -> !FabricLoader.getInstance().isModLoaded("image2map")
     );
 
     @Override

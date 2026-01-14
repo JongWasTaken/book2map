@@ -3,7 +3,7 @@ Taken from https://github.com/Patbox/Image2Map/blob/1.20.2/src/main/java/space/e
 This mixin will only be applied if image2map is not loaded, as book2map behaves the same way and needs it.
  */
 
-package pw.smto.book2map.mixin;
+package dev.smto.book2map.mixin;
 
 import net.minecraft.component.DataComponentTypes;
 import net.minecraft.component.type.NbtComponent;
@@ -12,9 +12,7 @@ import net.minecraft.entity.decoration.ItemFrameEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
-import net.minecraft.nbt.NbtCompound;
-import net.minecraft.nbt.NbtElement;
-import net.minecraft.registry.RegistryWrapper;
+import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.ActionResult;
 import net.minecraft.util.Hand;
 
@@ -28,7 +26,6 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
-import pw.smto.book2map.Book2Map;
 
 import java.util.Arrays;
 
@@ -45,13 +42,13 @@ public class ItemFrameEntityMixin {
     }
 
     @Inject(method = "dropHeldStack", at = @At("HEAD"), cancellable = true)
-    private void image2map$destroyMaps(@Nullable Entity entity, boolean alwaysDrop,
+    private void image2map$destroyMaps(ServerWorld world, @Nullable Entity entity, boolean dropSelf,
                                        CallbackInfo ci) {
         var frame = (ItemFrameEntity) (Object) this;
 
         if (!this.fixed && destroyItemFrame(entity, frame)) {
-            if (alwaysDrop) {
-                frame.dropStack(new ItemStack(Items.ITEM_FRAME));
+            if (dropSelf) {
+                frame.dropStack(world, new ItemStack(Items.ITEM_FRAME));
             }
             ci.cancel();
         }
@@ -61,11 +58,11 @@ public class ItemFrameEntityMixin {
     private static boolean clickItemFrame(PlayerEntity player, Hand hand, ItemFrameEntity itemFrameEntity) {
         var stack = player.getStackInHand(hand);
         var stackNBT = stack.getOrDefault(DataComponentTypes.CUSTOM_DATA, NbtComponent.DEFAULT).copyNbt();
-        if (!stackNBT.isEmpty() && stack.isOf(Items.BUNDLE) && stackNBT.getBoolean("image2map:quick_place")) {
-            var world = itemFrameEntity.getWorld();
+        if (!stackNBT.isEmpty() && stack.isOf(Items.BUNDLE) && stackNBT.getBoolean("image2map:quick_place").orElse(false)) {
+            var world = itemFrameEntity.getEntityWorld();
             var start = itemFrameEntity.getBlockPos();
-            var width = stackNBT.getInt("image2map:width");
-            var height = stackNBT.getInt("image2map:height");
+            var width = stackNBT.getInt("image2map:width").orElse(1);
+            var height = stackNBT.getInt("image2map:height").orElse(1);
 
             var frames = new ItemFrameEntity[width * height];
 
@@ -83,10 +80,10 @@ public class ItemFrameEntityMixin {
                 right = player.getHorizontalFacing().rotateYClockwise();
                 if (facing.getDirection() == Direction.AxisDirection.POSITIVE) {
                     down = right.rotateYClockwise();
-                    rot = player.getHorizontalFacing().getOpposite().getHorizontal();
+                    rot = player.getHorizontalFacing().getOpposite().getHorizontalQuarterTurns();
                 } else {
                     down = right.rotateYCounterclockwise();
-                    rot = (right.getAxis() == Direction.Axis.Z ? player.getHorizontalFacing() : player.getHorizontalFacing().getOpposite()).getHorizontal();
+                    rot = (right.getAxis() == Direction.Axis.Z ? player.getHorizontalFacing() : player.getHorizontalFacing().getOpposite()).getHorizontalQuarterTurns();
                 }
             }
 
@@ -110,8 +107,8 @@ public class ItemFrameEntityMixin {
                 var map = mapStack.getOrDefault(DataComponentTypes.CUSTOM_DATA, NbtComponent.DEFAULT).copyNbt();
                 //Book2Map.Logger.warn(map.toString());
                 if (!map.isEmpty()) {
-                    var x = map.getInt("image2map:x");
-                    var y = map.getInt("image2map:y");
+                    var x = map.getInt("image2map:x").orElse(1);
+                    var y = map.getInt("image2map:y").orElse(1);
 
                     map.putString("image2map:right", right.asString());
                     map.putString("image2map:down", down.asString());
@@ -148,16 +145,16 @@ public class ItemFrameEntityMixin {
                 "image2map:right", "image2map:down", "image2map:facing" };
 
         if (stack.getItem() == Items.FILLED_MAP && tag != null && Arrays.stream(requiredTags).allMatch(tag::contains)) {
-            var xo = tag.getInt("image2map:x");
-            var yo = tag.getInt("image2map:y");
-            var width = tag.getInt("image2map:width");
-            var height = tag.getInt("image2map:height");
+            var xo = tag.getInt("image2map:x").orElse(1);
+            var yo = tag.getInt("image2map:y").orElse(1);
+            var width = tag.getInt("image2map:width").orElse(1);
+            var height = tag.getInt("image2map:height").orElse(1);
 
-            Direction right = Direction.byName(tag.getString("image2map:right"));
-            Direction down = Direction.byName(tag.getString("image2map:down"));
-            Direction facing = Direction.byName(tag.getString("image2map:facing"));
+            Direction right = Direction.byId(tag.getString("image2map:right").orElse("north"));
+            Direction down = Direction.byId(tag.getString("image2map:down").orElse("down"));
+            Direction facing = Direction.byId(tag.getString("image2map:facing").orElse("north"));
 
-            var world = itemFrameEntity.getWorld();
+            var world = itemFrameEntity.getEntityWorld();
             var start = itemFrameEntity.getBlockPos();
 
             var mut = start.mutableCopy();

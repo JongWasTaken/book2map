@@ -2,7 +2,7 @@
 Parts of this file (mainly the rendering part) were taken from image2map (https://github.com/Patbox/Image2Map/blob/1.20.2/src/main/java/space/essem/image2map/renderer/MapRenderer.java)
  */
 
-package pw.smto.book2map;
+package dev.smto.book2map;
 
 import eu.pb4.mapcanvas.api.core.CanvasColor;
 import eu.pb4.mapcanvas.api.core.CanvasImage;
@@ -106,18 +106,18 @@ public class Map {
 
     private static int mapColorToRGBColor(CanvasColor color) {
         var mcColor = color.getRgbColor();
-        double[] mcColorVec = { (double) ColorHelper.Argb.getRed(mcColor), (double) ColorHelper.Argb.getGreen(mcColor), (double) ColorHelper.Argb.getBlue(mcColor) };
+        double[] mcColorVec = { (double) ColorHelper.getRed(mcColor), (double) ColorHelper.getGreen(mcColor), (double) ColorHelper.getBlue(mcColor) };
         double coeff = shadeCoeffs[color.getColor().id & 3];
-        return ColorHelper.Argb.getArgb(0, (int) (mcColorVec[0] * coeff), (int) (mcColorVec[1] * coeff), (int) (mcColorVec[2] * coeff));
+        return ColorHelper.getArgb(0, (int) (mcColorVec[0] * coeff), (int) (mcColorVec[1] * coeff), (int) (mcColorVec[2] * coeff));
     }
 
     private static CanvasColor floydDither(int[][] pixels, int x, int y, int imageColor) {
         var closestColor = CanvasUtils.findClosestColorARGB(imageColor);
         var palletedColor = mapColorToRGBColor(closestColor);
 
-        var errorR = ColorHelper.Argb.getRed(imageColor) - ColorHelper.Argb.getRed(palletedColor);
-        var errorG = ColorHelper.Argb.getGreen(imageColor) - ColorHelper.Argb.getGreen(palletedColor);
-        var errorB = ColorHelper.Argb.getBlue(imageColor) - ColorHelper.Argb.getBlue(palletedColor);
+        var errorR = ColorHelper.getRed(imageColor) - ColorHelper.getRed(palletedColor);
+        var errorG = ColorHelper.getGreen(imageColor) - ColorHelper.getGreen(palletedColor);
+        var errorB = ColorHelper.getBlue(imageColor) - ColorHelper.getBlue(palletedColor);
         if (pixels[0].length > x + 1) {
             pixels[y][x + 1] = applyError(pixels[y][x + 1], errorR, errorG, errorB, 7.0 / 16.0);
         }
@@ -135,10 +135,10 @@ public class Map {
     }
 
     private static int applyError(int pixelColor, int errorR, int errorG, int errorB, double quantConst) {
-        int pR = clamp( ColorHelper.Argb.getRed(pixelColor) + (int) ((double) errorR * quantConst), 0, 255);
-        int pG = clamp(ColorHelper.Argb.getGreen(pixelColor) + (int) ((double) errorG * quantConst), 0, 255);
-        int pB = clamp(ColorHelper.Argb.getBlue(pixelColor) + (int) ((double) errorB * quantConst), 0, 255);
-        return ColorHelper.Argb.getArgb(ColorHelper.Argb.getAlpha(pixelColor), pR, pG, pB);
+        int pR = clamp( ColorHelper.getRed(pixelColor) + (int) ((double) errorR * quantConst), 0, 255);
+        int pG = clamp(ColorHelper.getGreen(pixelColor) + (int) ((double) errorG * quantConst), 0, 255);
+        int pB = clamp(ColorHelper.getBlue(pixelColor) + (int) ((double) errorB * quantConst), 0, 255);
+        return ColorHelper.getArgb(ColorHelper.getAlpha(pixelColor), pR, pG, pB);
     }
 
     private static int clamp(int i, int min, int max) {
@@ -515,10 +515,10 @@ public class Map {
 
             BufferedImage finalM = m;
             CompletableFuture.supplyAsync(() -> Map.render(finalM, finalDither, finalWidth, finalHeight)).thenAcceptAsync(mapImage -> {
-                var items = Map.toVanillaItems(mapImage, player.getServerWorld(), "");
+                var items = Map.toVanillaItems(mapImage, player.getEntityWorld(), "");
                 giveToPlayer(player, items, "Generated from book", finalWidth, finalHeight);
                 player.sendMessage(Text.literal("§6Done!"), false);
-            }, player.getServer());
+            }, player.getEntityWorld().getServer());
         }
         else player.sendMessage(Text.of("§6You need to hold a book to use this command!"), false);
         return;

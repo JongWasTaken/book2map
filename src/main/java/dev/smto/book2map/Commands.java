@@ -1,4 +1,4 @@
-package pw.smto.book2map;
+package dev.smto.book2map;
 
 import com.mojang.brigadier.CommandDispatcher;
 import net.minecraft.server.MinecraftServer;
@@ -10,6 +10,7 @@ import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
 
 import java.awt.*;
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -64,7 +65,7 @@ public class Commands {
                             text.setStyle(Style.EMPTY
                                     .withBold(true)
                                     .withColor(Formatting.GREEN)
-                                    .withClickEvent(new ClickEvent(ClickEvent.Action.OPEN_URL,"https://github.com/JongWasTaken/book2map/wiki")));
+                                    .withClickEvent(new ClickEvent.OpenUrl(URI.create("https://github.com/JongWasTaken/book2map/wiki"))));
 
                             context.getSource().sendFeedback(() -> text, false);
                             return 1;

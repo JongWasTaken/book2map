@@ -16,7 +16,7 @@
 	"environment": "*",
 	"entrypoints": {
 		"main": [
-          "pw.smto.book2map.Book2Map"
+          "dev.smto.book2map.Book2Map"
 		]
 	},
 	"mixins": [

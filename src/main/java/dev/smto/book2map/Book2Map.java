@@ -1,4 +1,4 @@
-package pw.smto.book2map;
+package dev.smto.book2map;
 
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
