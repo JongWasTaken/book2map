@@ -1,56 +1,45 @@
 package dev.smto.book2map;
 
 import com.mojang.brigadier.CommandDispatcher;
-import net.minecraft.command.DefaultPermissions;
+import net.minecraft.ChatFormatting;
+import net.minecraft.commands.CommandSourceStack;
+import net.minecraft.network.chat.ClickEvent;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
+import net.minecraft.network.chat.Style;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.command.ServerCommandSource;
-import net.minecraft.text.ClickEvent;
-import net.minecraft.text.MutableText;
-import net.minecraft.text.Style;
-import net.minecraft.text.Text;
-import net.minecraft.util.Formatting;
-
+import net.minecraft.server.permissions.Permissions;
 import java.awt.*;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
 
-import static net.minecraft.server.command.CommandManager.literal;
+import static net.minecraft.commands.Commands.literal;
 public class Commands {
-    private static boolean initialized = false;
-
-    @Deprecated
-    public static void register(MinecraftServer server) {
-        if (!initialized) {
-            initialized = true;
-            register(server.getCommandManager().getDispatcher());
-            server.getPlayerManager().getPlayerList().forEach(spe -> {
-                server.getCommandManager().sendCommandTree(spe);
-            });
-        }
-    }
-
-    public static void register(CommandDispatcher<ServerCommandSource> dispatcher) {
+    public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
         dispatcher.register(literal("b2m")
                 .executes(context -> {
-                    context.getSource().sendFeedback(() -> Text.of(
+                    context.getSource().sendSuccess(() -> Component.nullToEmpty(
                             TextHelper.GOLD + TextHelper.BOLD + "Book2Map" + "\n" + TextHelper.RESET +
                     TextHelper.GOLD + "This command allows you to create a map from a book.\n" +
                                     "For basic usage, simply run " + TextHelper.GREEN + "\"/b2m generate\"" + TextHelper.GOLD + " while holding a book.\n" +
                                     "More advanced players can adjust a bunch of settings in the book itself.\n" +
                                     "For more information, run " + TextHelper.GREEN + "\"/b2m help\"" + TextHelper.GOLD + "!"
                     ), false);
-                    return 1;
+                    return 0;
                 })
                 .then(literal("generate")
                         .executes(context -> {
-                            Map.createByCommand(context.getSource().getPlayer());
+                            if (context.getSource().getPlayer() != null) {
+                                Map.createByCommand(context.getSource().getPlayer());
+                                return 0;
+                            }
                             return 1;
                         })
                 )
                 .then(literal("example")
                         .executes(context -> {
-                            MutableText text = Text.literal(TextHelper.GOLD + TextHelper.BOLD + "Book2Map Example" + "\n" + TextHelper.RESET);
+                            MutableComponent text = Component.literal(TextHelper.GOLD + TextHelper.BOLD + "Book2Map Example" + "\n" + TextHelper.RESET);
                             text.append(TextHelper.GOLD + "These are some example settings:\n");
                             text.append(TextHelper.RESET + TextHelper.AQUA + "book2map\n");
                             text.append(TextHelper.RESET + TextHelper.AQUA + "color:red\n");
@@ -65,11 +54,11 @@ public class Commands {
                             text.append(TextHelper.RESET + TextHelper.GOLD + "Click this message for more information!");
                             text.setStyle(Style.EMPTY
                                     .withBold(true)
-                                    .withColor(Formatting.GREEN)
+                                    .withColor(ChatFormatting.GREEN)
                                     .withClickEvent(new ClickEvent.OpenUrl(URI.create("https://github.com/JongWasTaken/book2map/wiki"))));
 
-                            context.getSource().sendFeedback(() -> text, false);
-                            return 1;
+                            context.getSource().sendSuccess(() -> text, false);
+                            return 0;
                         })
                 )
                 .then(literal("help")
@@ -84,8 +73,8 @@ public class Commands {
                             b.append("\n" + TextHelper.GOLD);
                             b.append("Run " + TextHelper.GREEN + "\"/b2m example\"" + TextHelper.GOLD + " to see an example or to visit the wiki.");
 
-                            context.getSource().sendFeedback(() -> Text.of(b.toString()), false);
-                            return 1;
+                            context.getSource().sendSuccess(() -> Component.nullToEmpty(b.toString()), false);
+                            return 0;
                         })
                 )
                 .then(literal("options")
@@ -105,8 +94,8 @@ public class Commands {
                             b.append(TextHelper.GOLD + "\n");
                             b.append("All options can also be shortened to the first letter (ex. font: -> f:).\n");
 
-                            context.getSource().sendFeedback(() -> Text.of(b.toString()), false);
-                            return 1;
+                            context.getSource().sendSuccess(() -> Component.nullToEmpty(b.toString()), false);
+                            return 0;
                         })
                 )
                 .then(literal("effects")
@@ -116,12 +105,12 @@ public class Commands {
                             b.append("The following effects are available:\n");
 
                             var effects = new ArrayList<>(List.of(CompositeEffects.effects));
-                            effects.remove(effects.size()-1);
+                            effects.removeLast();
                             for (CompositeEffects.CompositeEffect effect : effects) {
                                 b.append(TextHelper.AQUA + effect.getIdentifier() + TextHelper.GOLD + " - " + TextHelper.GREEN + effect.getDescription() + "\n");
                             }
-                            context.getSource().sendFeedback(() -> Text.of(b.toString()), false);
-                            return 1;
+                            context.getSource().sendSuccess(() -> Component.nullToEmpty(b.toString()), false);
+                            return 0;
                         })
                 )
                 .then(literal("fonts")
@@ -132,16 +121,16 @@ public class Commands {
                             for (Font font : Fonts.LIST) {
                                 b.append(TextHelper.AQUA + font.getFontName() + TextHelper.GOLD + "\n");
                             }
-                            context.getSource().sendFeedback(() -> Text.of(b.toString()), false);
-                            return 1;
+                            context.getSource().sendSuccess(() -> Component.nullToEmpty(b.toString()), false);
+                            return 0;
                         })
                 )
                 .then(literal("reload")
-                        .requires(s -> s.getPermissions().hasPermission(DefaultPermissions.ADMINS))
+                        .requires(s -> s.permissions().hasPermission(Permissions.COMMANDS_ADMIN))
                         .executes(context -> {
                             Fonts.reload();
-                            context.getSource().sendFeedback(() -> Text.of(TextHelper.GOLD + "Reloaded book2map!"), false);
-                            return 1;
+                            context.getSource().sendSuccess(() -> Component.nullToEmpty(TextHelper.GOLD + "Reloaded book2map!"), false);
+                            return 0;
                         })
                 )
         );

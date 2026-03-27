@@ -13,15 +13,15 @@ public class Fonts {
         var userFontFiles = Book2Map.CONFIG_FONTS_DIR.toFile().listFiles();
         if (userFontFiles != null) {
             for (File file : userFontFiles) {
-                if (isFontFile(file)) {
+                if (Fonts.isFontFile(file)) {
                     try {
                         env.registerFont(Font.createFont(Font.TRUETYPE_FONT, file));
                     } catch (Exception e) {
-                        Book2Map.Logger.error("Error while loading user font \"" + file.getName() + "\": " + e.toString());
+                        Book2Map.LOGGER.error("Error while loading user font \"" + file.getName() + "\": " + e.toString());
                     }
                 }
                 else {
-                    Book2Map.Logger.warn("Skipping non-font file \"" + file.getName() + "\"");
+                    Book2Map.LOGGER.warn("Skipping non-font file \"" + file.getName() + "\"");
                 }
             }
         }
@@ -36,15 +36,15 @@ public class Fonts {
 
         return f;
     }
-    public static ArrayList<Font> LIST = findAllFonts();
+    public static ArrayList<Font> LIST = Fonts.findAllFonts();
 
     public static void reload() {
-        LIST = findAllFonts();
+        Fonts.LIST = Fonts.findAllFonts();
     }
 
     private static boolean isFontFile(File file) {
         String name = file.getName();
-        int lastIndexOf = name.lastIndexOf(".");
+        int lastIndexOf = name.lastIndexOf('.');
         if (lastIndexOf == -1) {
             return false; // empty extension
         }

@@ -24,9 +24,9 @@
 	],
 	"accessWidener" : "book2map.accesswidener",
 	"depends": {
-		"fabricloader": ">=0.15.11",
-		"minecraft": "~1.21",
-		"java": ">=21",
+		"fabricloader": "*",
+		"minecraft": "~26.1",
+		"java": ">=25",
 		"fabric-api": "*"
 	}
 }

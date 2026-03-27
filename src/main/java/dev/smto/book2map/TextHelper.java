@@ -4,9 +4,9 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import net.minecraft.nbt.NbtCompound;
-import net.minecraft.util.Formatting;
 import java.util.Locale;
+import net.minecraft.ChatFormatting;
+import net.minecraft.nbt.CompoundTag;
 
 public class TextHelper {
     // Formatting
@@ -42,7 +42,7 @@ public class TextHelper {
         //Book2Map.Logger.error(raw);
         if (true) return raw;
 
-        NbtCompound n = new NbtCompound();
+        CompoundTag n = new CompoundTag();
         JsonObject rootObj;
         try {
             rootObj = JsonParser.parseString(n.asString().get()).getAsJsonObject();
@@ -79,7 +79,7 @@ public class TextHelper {
             out.append(bold ? BOLD : "").append(italic ? ITALIC : "");
 
             if (!color.isEmpty()) {
-                out.append(Formatting.byName(color.toUpperCase(Locale.ROOT)));
+                out.append(ChatFormatting.getByName(color.toUpperCase(Locale.ROOT)));
             }
 
             out.append(text);

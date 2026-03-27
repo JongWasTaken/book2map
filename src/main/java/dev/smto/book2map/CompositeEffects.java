@@ -17,12 +17,12 @@ public class CompositeEffects {
     }
 
     public static CompositeEffect getByIdentifier(String identifier) {
-        for (CompositeEffect effect : effects) {
+        for (CompositeEffect effect : CompositeEffects.effects) {
             if (effect.getIdentifier().equals(identifier)) {
                 return effect;
             }
         }
-        return NONE;
+        return CompositeEffects.NONE;
     }
 
     public record CanvasData(int width, int height) {}
@@ -35,7 +35,7 @@ public class CompositeEffects {
             return "fills the background with a solid color";
         }
         public String apply(Graphics2D g, CanvasData d, List<String> arguments) {
-            g.setColor(Colors.fromString(arguments.get(0)));
+            g.setColor(Colors.fromString(arguments.getFirst()));
             g.fillRect(0,0, d.width, d.height);
             return "";
         }
@@ -49,7 +49,7 @@ public class CompositeEffects {
             return "sets the background to a random palette of a given color (or a fully random palette)";
         }
         public String apply(Graphics2D g, CanvasData d, List<String> arguments) {
-            var color = arguments.get(0);
+            var color = arguments.getFirst();
             Random random = new Random();
             if (color.isEmpty())
             {
@@ -83,7 +83,7 @@ public class CompositeEffects {
                     }
                 }
             } catch (Exception e) {
-                Book2Map.Logger.warn(e.toString());
+                Book2Map.LOGGER.warn(e.toString());
                 return "Error while generating random color palette! This is probably a programming issue, so please report it!";
             }
             return "";
@@ -104,7 +104,7 @@ public class CompositeEffects {
             int tileSizeMultiplier = 1;
 
             if (arguments.size() == 1) {
-                texture = arguments.get(0);
+                texture = arguments.getFirst();
             }
             else if (arguments.size() == 2) {
                 texture = arguments.get(0);
@@ -133,7 +133,7 @@ public class CompositeEffects {
                 try {
                     image = ImageIO.read(targetFile.toFile());
                 } catch (Exception e) {
-                    Book2Map.Logger.error(e.toString());
+                    Book2Map.LOGGER.error(e.toString());
                     return "Error while loading texture! Please check your spelling.";
                 }
             }
@@ -179,7 +179,7 @@ public class CompositeEffects {
             int thickness = 4;
             Color c = Color.YELLOW;
             if (arguments.size() == 1) {
-                c = Colors.fromString(arguments.get(0), Color.YELLOW);
+                c = Colors.fromString(arguments.getFirst(), Color.YELLOW);
             }
             else if (arguments.size() == 2) {
                 c = Colors.fromString(arguments.get(0), Color.YELLOW);
@@ -216,7 +216,7 @@ public class CompositeEffects {
             if (!arguments.isEmpty()) {
                 try {
                     if (arguments.size() == 1) {
-                        color = Colors.fromString(arguments.get(0));
+                        color = Colors.fromString(arguments.getFirst());
                     }
                     if (arguments.size() == 2) {
                         color = Colors.fromString(arguments.get(0));
@@ -252,14 +252,13 @@ public class CompositeEffects {
                     return "Error while parsing circle arguments! Remember to use this format: <color>,<x>,<y>,<width>,<height>,<hollow?>";
                 }
             }
-            Graphics2D g2 = (Graphics2D) g;
-            g2.setRenderingHint(RenderingHints.KEY_STROKE_CONTROL,
+            g.setRenderingHint(RenderingHints.KEY_STROKE_CONTROL,
                     RenderingHints.VALUE_STROKE_PURE);
-            g2.setColor(color);
+            g.setColor(color);
             var shape = new Ellipse2D.Double(x,y,width,height);
-            g2.draw(shape);
+            g.draw(shape);
             if (!hollow) {
-                g2.fill(shape);
+                g.fill(shape);
             }
             return "";
         }
@@ -283,7 +282,7 @@ public class CompositeEffects {
             if (!arguments.isEmpty()) {
                 try {
                     if (arguments.size() == 1) {
-                        color = Colors.fromString(arguments.get(0));
+                        color = Colors.fromString(arguments.getFirst());
                     }
                     if (arguments.size() == 2) {
                         color = Colors.fromString(arguments.get(0));
@@ -319,14 +318,13 @@ public class CompositeEffects {
                     return "Error while parsing rectangle arguments! Remember to use this format: <color>,<x>,<y>,<width>,<height>,<hollow?>";
                 }
             }
-            Graphics2D g2 = (Graphics2D) g;
-            g2.setRenderingHint(RenderingHints.KEY_STROKE_CONTROL,
+            g.setRenderingHint(RenderingHints.KEY_STROKE_CONTROL,
                     RenderingHints.VALUE_STROKE_PURE);
-            g2.setColor(color);
+            g.setColor(color);
             var shape = new Rectangle(x,y,width,height);
-            g2.draw(shape);
+            g.draw(shape);
             if (!hollow) {
-                g2.fill(shape);
+                g.fill(shape);
             }
             return "";
         }
@@ -349,7 +347,7 @@ public class CompositeEffects {
             if (!arguments.isEmpty()) {
                 try {
                     if (arguments.size() == 1) {
-                        color = Colors.fromString(arguments.get(0));
+                        color = Colors.fromString(arguments.getFirst());
                     }
                     if (arguments.size() == 2) {
                         color = Colors.fromString(arguments.get(0));
@@ -377,11 +375,10 @@ public class CompositeEffects {
                     return "Error while parsing line arguments! Remember to use this format: <color>,<x1>,<y1>,<x2>,<y2>";
                 }
             }
-            Graphics2D g2 = (Graphics2D) g;
-            g2.setRenderingHint(RenderingHints.KEY_STROKE_CONTROL,
+            g.setRenderingHint(RenderingHints.KEY_STROKE_CONTROL,
                     RenderingHints.VALUE_STROKE_PURE);
-            g2.setColor(color);
-            g2.drawLine(x1, y1, x2, y2);
+            g.setColor(color);
+            g.drawLine(x1, y1, x2, y2);
             return "";
         }
     };
@@ -403,7 +400,7 @@ public class CompositeEffects {
             if (!arguments.isEmpty()) {
                 try {
                     if (arguments.size() == 1) {
-                        texture = arguments.get(0);
+                        texture = arguments.getFirst();
                     }
                     if (arguments.size() == 2) {
                         texture = arguments.get(0);
@@ -438,7 +435,7 @@ public class CompositeEffects {
                 try {
                     image = ImageIO.read(targetFile.toFile());
                 } catch (Exception e) {
-                    Book2Map.Logger.error(e.toString());
+                    Book2Map.LOGGER.error(e.toString());
                     return "Error while loading texture! This might indicate a server issue.";
                 }
             }
@@ -478,15 +475,15 @@ public class CompositeEffects {
     };
 
     public static final CompositeEffect[] effects = {
-            BACKGROUND,
-            BACKGROUND_RANDOM,
-            BACKGROUND_TEXTURE,
-            FRAME,
-            CIRCLE,
-            RECTANGLE,
-            LINE,
-            TEXTURE,
-            BOOK_CONTENT,
-            NONE
+            CompositeEffects.BACKGROUND,
+            CompositeEffects.BACKGROUND_RANDOM,
+            CompositeEffects.BACKGROUND_TEXTURE,
+            CompositeEffects.FRAME,
+            CompositeEffects.CIRCLE,
+            CompositeEffects.RECTANGLE,
+            CompositeEffects.LINE,
+            CompositeEffects.TEXTURE,
+            CompositeEffects.BOOK_CONTENT,
+            CompositeEffects.NONE
     };
 }

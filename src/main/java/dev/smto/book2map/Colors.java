@@ -1,10 +1,9 @@
 package dev.smto.book2map;
 
-import net.minecraft.util.Formatting;
-
 import java.awt.*;
 import java.util.HashMap;
 import java.util.Locale;
+import net.minecraft.ChatFormatting;
 
 public class Colors {
 
@@ -34,10 +33,10 @@ public class Colors {
         t.put("brown", new Color(165,42,42));
         return t;
     }
-    public static final HashMap<String, Color> LIST = initColors();
+    public static final HashMap<String, Color> LIST = Colors.initColors();
 
     public static Color fromString(String color) {
-        return fromString(color, Color.BLACK);
+        return Colors.fromString(color, Color.BLACK);
     }
     public static Color fromString(String color, Color defaultColor) {
         // none
@@ -53,13 +52,13 @@ public class Colors {
         }
 
         // in list
-        var c = LIST.getOrDefault(color, Color.BLACK);
+        var c = Colors.LIST.getOrDefault(color, Color.BLACK);
         if (c != Color.BLACK) return c;
 
         // minecraft color conversion
-        var temp = Formatting.byName(color.toUpperCase(Locale.ROOT));
+        var temp = ChatFormatting.getByName(color.toUpperCase(Locale.ROOT));
         if (temp != null) {
-            return new Color((temp.getColorValue() / 256 / 256) % 256, (temp.getColorValue() / 256) % 256, temp.getColorValue() % 256);
+            return new Color((temp.getColor() / 256 / 256) % 256, (temp.getColor() / 256) % 256, temp.getColor() % 256);
         }
 
         // fallback

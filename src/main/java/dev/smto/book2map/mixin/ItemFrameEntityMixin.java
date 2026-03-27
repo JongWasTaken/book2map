@@ -5,20 +5,6 @@ This mixin will only be applied if image2map is not loaded, as book2map behaves 
 
 package dev.smto.book2map.mixin;
 
-import net.minecraft.component.DataComponentTypes;
-import net.minecraft.component.type.NbtComponent;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.decoration.ItemFrameEntity;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.item.ItemStack;
-import net.minecraft.item.Items;
-import net.minecraft.server.world.ServerWorld;
-import net.minecraft.util.ActionResult;
-import net.minecraft.util.Hand;
-
-import net.minecraft.util.math.Box;
-import net.minecraft.util.math.Direction;
-import net.minecraft.util.math.Vec3d;
 import org.jetbrains.annotations.Nullable;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -28,73 +14,86 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import java.util.Arrays;
+import net.minecraft.core.Direction;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.decoration.ItemFrame;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.item.component.CustomData;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
 
-@Mixin(ItemFrameEntity.class)
+@Mixin(ItemFrame.class)
 public class ItemFrameEntityMixin {
     @Shadow
     private boolean fixed;
 
     @Inject(method = "interact", at = @At("HEAD"), cancellable = true)
-    private void image2map$fillMaps(PlayerEntity player, Hand hand, CallbackInfoReturnable<ActionResult> cir) {
-        if (!this.fixed && clickItemFrame(player, hand, (ItemFrameEntity) (Object) this)) {
-            cir.setReturnValue(ActionResult.SUCCESS);
+    private void image2map$fillMaps(Player player, InteractionHand hand, Vec3 location, CallbackInfoReturnable<InteractionResult> cir) {
+        if (!this.fixed && clickItemFrame(player, hand, (ItemFrame) (Object) this)) {
+            cir.setReturnValue(InteractionResult.SUCCESS);
         }
     }
 
-    @Inject(method = "dropHeldStack", at = @At("HEAD"), cancellable = true)
-    private void image2map$destroyMaps(ServerWorld world, @Nullable Entity entity, boolean dropSelf,
+    @Inject(method = "dropItem(Lnet/minecraft/server/level/ServerLevel;Lnet/minecraft/world/entity/Entity;Z)V", at = @At("HEAD"), cancellable = true)
+    private void image2map$destroyMaps(ServerLevel world, @Nullable Entity entity, boolean dropSelf,
                                        CallbackInfo ci) {
-        var frame = (ItemFrameEntity) (Object) this;
+        var frame = (ItemFrame) (Object) this;
 
         if (!this.fixed && destroyItemFrame(entity, frame)) {
             if (dropSelf) {
-                frame.dropStack(world, new ItemStack(Items.ITEM_FRAME));
+                frame.spawnAtLocation(world, new ItemStack(Items.ITEM_FRAME));
             }
             ci.cancel();
         }
     }
 
 
-    private static boolean clickItemFrame(PlayerEntity player, Hand hand, ItemFrameEntity itemFrameEntity) {
-        var stack = player.getStackInHand(hand);
-        var stackNBT = stack.getOrDefault(DataComponentTypes.CUSTOM_DATA, NbtComponent.DEFAULT).copyNbt();
-        if (!stackNBT.isEmpty() && stack.isOf(Items.BUNDLE) && stackNBT.getBoolean("image2map:quick_place").orElse(false)) {
-            var world = itemFrameEntity.getEntityWorld();
-            var start = itemFrameEntity.getBlockPos();
+    private static boolean clickItemFrame(Player player, InteractionHand hand, ItemFrame itemFrameEntity) {
+        var stack = player.getItemInHand(hand);
+        var stackNBT = stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
+        if (!stackNBT.isEmpty() && stack.is(Items.BUNDLE) && stackNBT.getBoolean("image2map:quick_place").orElse(false)) {
+            var world = itemFrameEntity.level();
+            var start = itemFrameEntity.blockPosition();
             var width = stackNBT.getInt("image2map:width").orElse(1);
             var height = stackNBT.getInt("image2map:height").orElse(1);
 
-            var frames = new ItemFrameEntity[width * height];
+            var frames = new ItemFrame[width * height];
 
-            var facing = itemFrameEntity.getHorizontalFacing();
+            var facing = itemFrameEntity.getDirection();
             Direction right;
             Direction down;
 
             int rot;
 
             if (facing.getAxis() != Direction.Axis.Y) {
-                right = facing.rotateYCounterclockwise();
+                right = facing.getCounterClockWise();
                 down = Direction.DOWN;
                 rot = 0;
             } else {
-                right = player.getHorizontalFacing().rotateYClockwise();
-                if (facing.getDirection() == Direction.AxisDirection.POSITIVE) {
-                    down = right.rotateYClockwise();
-                    rot = player.getHorizontalFacing().getOpposite().getHorizontalQuarterTurns();
+                right = player.getDirection().getClockWise();
+                if (facing.getAxisDirection() == Direction.AxisDirection.POSITIVE) {
+                    down = right.getClockWise();
+                    rot = player.getDirection().getOpposite().get2DDataValue();
                 } else {
-                    down = right.rotateYCounterclockwise();
-                    rot = (right.getAxis() == Direction.Axis.Z ? player.getHorizontalFacing() : player.getHorizontalFacing().getOpposite()).getHorizontalQuarterTurns();
+                    down = right.getCounterClockWise();
+                    rot = (right.getAxis() == Direction.Axis.Z ? player.getDirection() : player.getDirection().getOpposite()).get2DDataValue();
                 }
             }
 
-            var mut = start.mutableCopy();
+            var mut = start.mutable();
 
             for (var x = 0; x < width; x++) {
                 for (var y = 0; y < height; y++) {
                     mut.set(start);
                     mut.move(right, x);
                     mut.move(down, y);
-                    var entities = world.getEntitiesByClass(ItemFrameEntity.class, Box.from(Vec3d.of(mut)), (entity1) -> entity1.getHorizontalFacing() == facing && entity1.getBlockPos().equals(mut));
+                    var entities = world.getEntitiesOfClass(ItemFrame.class, AABB.unitCubeFromLowerCorner(Vec3.atLowerCornerOf(mut)), (entity1) -> entity1.getDirection() == facing && entity1.blockPosition().equals(mut));
                     if (!entities.isEmpty()) {
                         frames[x + y * width] = entities.get(0);
                     }
@@ -103,30 +102,30 @@ public class ItemFrameEntityMixin {
 
 
 
-            for (var mapStack : stack.get(DataComponentTypes.BUNDLE_CONTENTS).stream().toList()) {
-                var map = mapStack.getOrDefault(DataComponentTypes.CUSTOM_DATA, NbtComponent.DEFAULT).copyNbt();
+            for (var mapStack : stack.get(DataComponents.BUNDLE_CONTENTS).itemCopyStream().toList()) {
+                var map = mapStack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
                 //Book2Map.Logger.warn(map.toString());
                 if (!map.isEmpty()) {
                     var x = map.getInt("image2map:x").orElse(1);
                     var y = map.getInt("image2map:y").orElse(1);
 
-                    map.putString("image2map:right", right.asString());
-                    map.putString("image2map:down", down.asString());
-                    map.putString("image2map:facing", facing.asString());
+                    map.putString("image2map:right", right.getSerializedName());
+                    map.putString("image2map:down", down.getSerializedName());
+                    map.putString("image2map:facing", facing.getSerializedName());
 
-                    mapStack.set(DataComponentTypes.CUSTOM_DATA,NbtComponent.of(map));
+                    mapStack.set(DataComponents.CUSTOM_DATA,CustomData.of(map));
 
                     var frame = frames[x + y * width];
 
-                    if (frame != null && frame.getHeldItemStack().isEmpty()) {
-                        frame.setHeldItemStack(mapStack);
+                    if (frame != null && frame.getItem().isEmpty()) {
+                        frame.setItem(mapStack);
                         frame.setRotation(rot);
                         frame.setInvisible(true);
                     }
                 }
             }
 
-            stack.decrement(1);
+            stack.shrink(1);
 
             return true;
         }
@@ -134,10 +133,10 @@ public class ItemFrameEntityMixin {
         return false;
     }
 
-    private static boolean destroyItemFrame(Entity player, ItemFrameEntity itemFrameEntity) {
+    private static boolean destroyItemFrame(Entity player, ItemFrame itemFrameEntity) {
         //if (true) return false;
-        var stack = itemFrameEntity.getHeldItemStack();
-        var tag = stack.getOrDefault(DataComponentTypes.CUSTOM_DATA, NbtComponent.DEFAULT).copyNbt();
+        var stack = itemFrameEntity.getItem();
+        var tag = stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY).copyTag();
 
         //Book2Map.Logger.error(tag.toString());
 
@@ -150,34 +149,34 @@ public class ItemFrameEntityMixin {
             var width = tag.getInt("image2map:width").orElse(1);
             var height = tag.getInt("image2map:height").orElse(1);
 
-            Direction right = Direction.byId(tag.getString("image2map:right").orElse("north"));
-            Direction down = Direction.byId(tag.getString("image2map:down").orElse("down"));
-            Direction facing = Direction.byId(tag.getString("image2map:facing").orElse("north"));
+            Direction right = Direction.byName(tag.getString("image2map:right").orElse("north"));
+            Direction down = Direction.byName(tag.getString("image2map:down").orElse("down"));
+            Direction facing = Direction.byName(tag.getString("image2map:facing").orElse("north"));
 
-            var world = itemFrameEntity.getEntityWorld();
-            var start = itemFrameEntity.getBlockPos();
+            var world = itemFrameEntity.level();
+            var start = itemFrameEntity.blockPosition();
 
-            var mut = start.mutableCopy();
+            var mut = start.mutable();
 
             mut.move(right, -xo);
             mut.move(down, -yo);
 
-            start = mut.toImmutable();
+            start = mut.immutable();
 
             for (var x = 0; x < width; x++) {
                 for (var y = 0; y < height; y++) {
                     mut.set(start);
                     mut.move(right, x);
                     mut.move(down, y);
-                    var entities = world.getEntitiesByClass(ItemFrameEntity.class, Box.from(Vec3d.of(mut)),
-                            (entity1) -> entity1.getHorizontalFacing() == facing && entity1.getBlockPos().equals(mut));
+                    var entities = world.getEntitiesOfClass(ItemFrame.class, AABB.unitCubeFromLowerCorner(Vec3.atLowerCornerOf(mut)),
+                            (entity1) -> entity1.getDirection() == facing && entity1.blockPosition().equals(mut));
                     if (!entities.isEmpty()) {
                         var frame = entities.get(0);
 
                         // Only apply to frames that contain an image2map map
-                        var frameStack = frame.getHeldItemStack();
+                        var frameStack = frame.getItem();
                         if (frameStack.getItem() == Items.FILLED_MAP && tag != null && Arrays.stream(requiredTags).allMatch(tag::contains)) {
-                            frame.setHeldItemStack(ItemStack.EMPTY, true);
+                            frame.setItem(ItemStack.EMPTY, true);
                             frame.setInvisible(false);
                         }
                     }

@@ -7,26 +7,6 @@ package dev.smto.book2map;
 import eu.pb4.mapcanvas.api.core.CanvasColor;
 import eu.pb4.mapcanvas.api.core.CanvasImage;
 import eu.pb4.mapcanvas.api.utils.CanvasUtils;
-import net.minecraft.component.DataComponentTypes;
-import net.minecraft.component.type.BundleContentsComponent;
-import net.minecraft.component.type.LoreComponent;
-import net.minecraft.component.type.NbtComponent;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.item.ItemStack;
-import net.minecraft.item.Items;
-import net.minecraft.item.map.MapState;
-import net.minecraft.nbt.NbtCompound;
-import net.minecraft.registry.RegistryKey;
-import net.minecraft.registry.RegistryKeys;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.server.world.ServerWorld;
-import net.minecraft.text.Text;
-import net.minecraft.util.Formatting;
-import net.minecraft.util.Hand;
-import net.minecraft.util.Identifier;
-import net.minecraft.util.math.ColorHelper;
-import net.minecraft.util.math.MathHelper;
-
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.awt.image.DataBufferByte;
@@ -34,21 +14,41 @@ import java.util.*;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
+import net.minecraft.ChatFormatting;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.util.ARGB;
+import net.minecraft.util.Mth;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.ItemStackTemplate;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.item.component.BundleContents;
+import net.minecraft.world.item.component.CustomData;
+import net.minecraft.world.item.component.ItemLore;
+import net.minecraft.world.level.saveddata.maps.MapItemSavedData;
 
 public class Map {
-    private static final double shadeCoeffs[] = { 0.71, 0.86, 1.0, 0.53 };
+    private static final double[] shadeCoeffs = { 0.71, 0.86, 1.0, 0.53 };
 
     public static CanvasImage render(BufferedImage image, Boolean dither, int width, int height) {
         Image resizedImage = image.getScaledInstance(width, height, Image.SCALE_DEFAULT);
-        BufferedImage resized = convertToBufferedImage(resizedImage);
-        int[][] pixels = convertPixelArray(resized);
+        BufferedImage resized = Map.convertToBufferedImage(resizedImage);
+        int[][] pixels = Map.convertPixelArray(resized);
 
         var state = new CanvasImage(width, height);
 
         for (int i = 0; i < width; i++) {
             for (int j = 0; j < height; j++) {
                 if (dither) {
-                    state.set(i, j, floydDither(pixels, i, j, pixels[j][i]));
+                    state.set(i, j, Map.floydDither(pixels, i, j, pixels[j][i]));
                 } else {
                     state.set(i, j, CanvasUtils.findClosestColorARGB(pixels[j][i]));
                 }
@@ -58,9 +58,9 @@ public class Map {
         return state;
     }
 
-    public static List<ItemStack> toVanillaItems(CanvasImage image, ServerWorld world, String url) {
-        var xSections = MathHelper.ceil(image.getWidth() / 128d);
-        var ySections = MathHelper.ceil(image.getHeight() / 128d);
+    public static List<ItemStack> toVanillaItems(CanvasImage image, ServerLevel world, String url) {
+        var xSections = Mth.ceil(image.getWidth() / 128.0d);
+        var ySections = Mth.ceil(image.getHeight() / 128.0d);
 
         var xDelta = (xSections * 128 - image.getWidth()) / 2;
         var yDelta = (ySections * 128 - image.getHeight()) / 2;
@@ -69,11 +69,11 @@ public class Map {
 
         for (int ys = 0; ys < ySections; ys++) {
             for (int xs = 0; xs < xSections; xs++) {
-                var id = world.increaseAndGetMapId();
-                var state = MapState.of(
+                var id = world.getFreeMapId();
+                var state = MapItemSavedData.createFresh(
                         0, 0, (byte) 0,
                         false, false,
-                        RegistryKey.of(RegistryKeys.WORLD, Identifier.of("image2map", "generated"))
+                        ResourceKey.create(Registries.DIMENSION, Identifier.fromNamespaceAndPath("image2map", "generated"))
                 );
 
                 for (int xl = 0; xl < 128; xl++) {
@@ -86,17 +86,17 @@ public class Map {
                         }
                     }
                 }
-                world.putMapState(id, state);
+                world.setMapData(id, state);
 
                 var stack = new ItemStack(Items.FILLED_MAP);
-                stack.set(DataComponentTypes.MAP_ID, id);
+                stack.set(DataComponents.MAP_ID, id);
                 //stack.getOrCreateNbt().putInt("map", id);
-                NbtCompound n = new NbtCompound();
+                CompoundTag n = new CompoundTag();
                 n.putInt("image2map:x", xs);
                 n.putInt("image2map:y", ys);
                 n.putInt("image2map:width", xSections);
                 n.putInt("image2map:height", ySections);
-                stack.set(DataComponentTypes.CUSTOM_DATA, NbtComponent.of(n));
+                stack.set(DataComponents.CUSTOM_DATA, CustomData.of(n));
                 items.add(stack);
             }
         }
@@ -106,28 +106,28 @@ public class Map {
 
     private static int mapColorToRGBColor(CanvasColor color) {
         var mcColor = color.getRgbColor();
-        double[] mcColorVec = { (double) ColorHelper.getRed(mcColor), (double) ColorHelper.getGreen(mcColor), (double) ColorHelper.getBlue(mcColor) };
-        double coeff = shadeCoeffs[color.getColor().id & 3];
-        return ColorHelper.getArgb(0, (int) (mcColorVec[0] * coeff), (int) (mcColorVec[1] * coeff), (int) (mcColorVec[2] * coeff));
+        double[] mcColorVec = { (double) ARGB.red(mcColor), (double) ARGB.green(mcColor), (double) ARGB.blue(mcColor) };
+        double coeff = Map.shadeCoeffs[color.getColor().id & 3];
+        return ARGB.color(0, (int) (mcColorVec[0] * coeff), (int) (mcColorVec[1] * coeff), (int) (mcColorVec[2] * coeff));
     }
 
     private static CanvasColor floydDither(int[][] pixels, int x, int y, int imageColor) {
         var closestColor = CanvasUtils.findClosestColorARGB(imageColor);
-        var palletedColor = mapColorToRGBColor(closestColor);
+        var palletedColor = Map.mapColorToRGBColor(closestColor);
 
-        var errorR = ColorHelper.getRed(imageColor) - ColorHelper.getRed(palletedColor);
-        var errorG = ColorHelper.getGreen(imageColor) - ColorHelper.getGreen(palletedColor);
-        var errorB = ColorHelper.getBlue(imageColor) - ColorHelper.getBlue(palletedColor);
+        var errorR = ARGB.red(imageColor) - ARGB.red(palletedColor);
+        var errorG = ARGB.green(imageColor) - ARGB.green(palletedColor);
+        var errorB = ARGB.blue(imageColor) - ARGB.blue(palletedColor);
         if (pixels[0].length > x + 1) {
-            pixels[y][x + 1] = applyError(pixels[y][x + 1], errorR, errorG, errorB, 7.0 / 16.0);
+            pixels[y][x + 1] = Map.applyError(pixels[y][x + 1], errorR, errorG, errorB, 7.0 / 16.0);
         }
         if (pixels.length > y + 1) {
             if (x > 0) {
-                pixels[y + 1][x - 1] = applyError(pixels[y + 1][x - 1], errorR, errorG, errorB, 3.0 / 16.0);
+                pixels[y + 1][x - 1] = Map.applyError(pixels[y + 1][x - 1], errorR, errorG, errorB, 3.0 / 16.0);
             }
-            pixels[y + 1][x] = applyError(pixels[y + 1][x], errorR, errorG, errorB, 5.0 / 16.0);
+            pixels[y + 1][x] = Map.applyError(pixels[y + 1][x], errorR, errorG, errorB, 5.0 / 16.0);
             if (pixels[0].length > x + 1) {
-                pixels[y + 1][x + 1] = applyError(pixels[y + 1][x + 1], errorR, errorG, errorB, 1.0 / 16.0);
+                pixels[y + 1][x + 1] = Map.applyError(pixels[y + 1][x + 1], errorR, errorG, errorB, 1.0 / 16.0);
             }
         }
 
@@ -135,10 +135,10 @@ public class Map {
     }
 
     private static int applyError(int pixelColor, int errorR, int errorG, int errorB, double quantConst) {
-        int pR = clamp( ColorHelper.getRed(pixelColor) + (int) ((double) errorR * quantConst), 0, 255);
-        int pG = clamp(ColorHelper.getGreen(pixelColor) + (int) ((double) errorG * quantConst), 0, 255);
-        int pB = clamp(ColorHelper.getBlue(pixelColor) + (int) ((double) errorB * quantConst), 0, 255);
-        return ColorHelper.getArgb(ColorHelper.getAlpha(pixelColor), pR, pG, pB);
+        int pR = Map.clamp( ARGB.red(pixelColor) + (int) ((double) errorR * quantConst), 0, 255);
+        int pG = Map.clamp(ARGB.green(pixelColor) + (int) ((double) errorG * quantConst), 0, 255);
+        int pB = Map.clamp(ARGB.blue(pixelColor) + (int) ((double) errorB * quantConst), 0, 255);
+        return ARGB.color(ARGB.alpha(pixelColor), pR, pG, pB);
     }
 
     private static int clamp(int i, int min, int max) {
@@ -185,7 +185,7 @@ public class Map {
         return newImage;
     }
 
-    private static BufferedImage compositeImage(ServerPlayerEntity player, CompositeEffects.CanvasData d, List<EffectDataPair> effects) {
+    private static BufferedImage compositeImage(ServerPlayer player, CompositeEffects.CanvasData d, List<EffectDataPair> effects) {
         BufferedImage newImage = new BufferedImage(d.width(), d.height(),
                 BufferedImage.TYPE_4BYTE_ABGR);
         Graphics2D g = newImage.createGraphics();
@@ -200,7 +200,7 @@ public class Map {
         for (int i = 0; i < effects.size(); i++) {
             r = effects.get(i).effect().apply(g, d, effects.get(i).data());
             if (!r.isEmpty()) {
-                player.sendMessage(Text.literal(TextHelper.RED +r), false);
+                player.sendSystemMessage(Component.literal(TextHelper.RED +r), false);
             }
         }
         g.dispose();
@@ -209,16 +209,16 @@ public class Map {
 
     private record EffectDataPair(CompositeEffects.CompositeEffect effect, List<String> data) {}
 
-    public static void createByCommand(ServerPlayerEntity player) {
-        var offhandStack = player.getStackInHand(Hand.MAIN_HAND);
+    public static void createByCommand(ServerPlayer player) {
+        var offhandStack = player.getItemInHand(InteractionHand.MAIN_HAND);
         if (offhandStack.isEmpty()) {
-            player.sendMessage(Text.of("§6You need to hold a book to use this command!"), false);
+            player.sendSystemMessage(Component.nullToEmpty("§6You need to hold a book to use this command!"), false);
             return;
         }
         if(offhandStack.getItem().equals(Items.WRITABLE_BOOK) || offhandStack.getItem().equals(Items.WRITTEN_BOOK)) {
-            var x = offhandStack.getComponents().get(DataComponentTypes.WRITABLE_BOOK_CONTENT).pages();
+            var x = offhandStack.getComponents().get(DataComponents.WRITABLE_BOOK_CONTENT).pages();
             if(x.isEmpty()) {
-                player.sendMessage(Text.literal("§6Book is empty!"), false);
+                player.sendSystemMessage(Component.literal("§6Book is empty!"), false);
                 return;
             }
 
@@ -231,7 +231,7 @@ public class Map {
 
             // READ DATA FROM BOOK HERE
             // defaults
-            String font = Fonts.LIST.get(0).getFontName();
+            String font = Fonts.LIST.getFirst().getFontName();
             for (Font xfont : Fonts.LIST) {
                 if (xfont.getFontName().equals("Minecraft")) {
                     font = xfont.getFontName();
@@ -262,9 +262,9 @@ public class Map {
                 pages.add(t2[0].trim());
             }
             var settings = new ArrayList<>(List.of(settingsPage.split("\n")));
-            if (settings.get(0).trim().equals("book2map")) {
-                player.sendMessage(Text.literal("§6Using custom settings from book!"), false);
-                settings.remove(0);
+            if (settings.getFirst().trim().equals("book2map")) {
+                player.sendSystemMessage(Component.literal("§6Using custom settings from book!"), false);
+                settings.removeFirst();
                 for (String s : settings) {
                     var line = s.trim().split(":");
                     if (line[0].startsWith("!") || line[0].startsWith("#")) {
@@ -347,7 +347,7 @@ public class Map {
                                     ));
                                 }
                             } catch (Exception ignored) {
-                                player.sendMessage(Text.literal("§cInvalid effect settings: " + line[1].trim()), false);
+                                player.sendSystemMessage(Component.literal("§cInvalid effect settings: " + line[1].trim()), false);
                             }
                             continue;
                         }
@@ -384,9 +384,9 @@ public class Map {
                     master: for (String page : pages) {
                         for (String line : page.split("\n")) {
                             currentColor = finalColor;
-                            currentLine++;
+                            this.currentLine++;
                             currentXPosition = finalLeftOffset;
-                            if (currentLine * finalLineSize > d.height()) {
+                            if (this.currentLine * finalLineSize > d.height()) {
                                 break master;
                             }
                             if (line.startsWith("^^")) {
@@ -433,15 +433,15 @@ public class Map {
                                         currentXPosition = currentXPosition + g.getFontMetrics(currentFont).charWidth(c);
                                     }
                                 } else {
-                                    var temp = Formatting.byCode(c);
+                                    var temp = ChatFormatting.getByCode(c);
                                     if (temp != null) {
                                         if (temp.isColor()) {
                                             // 256*256*red+256*green+blue
-                                            currentColor = new Color((temp.getColorValue() / 256 / 256) % 256, (temp.getColorValue() / 256) % 256, temp.getColorValue() % 256);
+                                            currentColor = new Color((temp.getColor() / 256 / 256) % 256, (temp.getColor() / 256) % 256, temp.getColor() % 256);
                                         }
                                         else {
                                             //Book2Map.Logger.warn("TAG IS NOT COLOR: " + temp.getName());
-                                            if(temp.getCode() == 'l') {
+                                            if(temp.getChar() == 'l') {
                                                 if (currentFontType == 0) {
                                                     currentFontType = 1;
                                                 }
@@ -449,7 +449,7 @@ public class Map {
                                                     currentFontType = 3;
                                                 }
                                             }
-                                            else if (temp.getCode() == 'o') {
+                                            else if (temp.getChar() == 'o') {
                                                 if (currentFontType == 0) {
                                                     currentFontType = 2;
                                                 }
@@ -457,7 +457,7 @@ public class Map {
                                                     currentFontType = 3;
                                                 }
                                             }
-                                            else if (temp.getCode() == 'r') {
+                                            else if (temp.getChar() == 'r') {
                                                 currentColor = finalColor;
                                                 currentFontType = 0;
                                             }
@@ -490,54 +490,54 @@ public class Map {
                 ));
             }
 
-            player.sendMessage(Text.literal("§6Font: §r" + font), false);
-            player.sendMessage(Text.literal("§6Font size: §r" + lineSize), false);
-            player.sendMessage(Text.literal("§6Font color: §rR" + color.getRed() + " G" + color.getGreen() + " B" + color.getBlue()), false);
-            player.sendMessage(Text.literal("§6Width in blocks: §r" + (width/128)), false);
-            player.sendMessage(Text.literal("§6Height in blocks: §r" + (width/128)), false);
-            player.sendMessage(Text.literal("§6Left side offset: §r" + leftOffset), false);
-            player.sendMessage(Text.literal("§6Top side offset: §r" + leftOffset), false);
-            player.sendMessage(Text.literal("§6Use dithering: §r" + dither), false);
-            player.sendMessage(Text.literal("§6Procedure (top to bottom): §r"), false);
+            player.sendSystemMessage(Component.literal("§6Font: §r" + font), false);
+            player.sendSystemMessage(Component.literal("§6Font size: §r" + lineSize), false);
+            player.sendSystemMessage(Component.literal("§6Font color: §rR" + color.getRed() + " G" + color.getGreen() + " B" + color.getBlue()), false);
+            player.sendSystemMessage(Component.literal("§6Width in blocks: §r" + (width/128)), false);
+            player.sendSystemMessage(Component.literal("§6Height in blocks: §r" + (width/128)), false);
+            player.sendSystemMessage(Component.literal("§6Left side offset: §r" + leftOffset), false);
+            player.sendSystemMessage(Component.literal("§6Top side offset: §r" + leftOffset), false);
+            player.sendSystemMessage(Component.literal("§6Use dithering: §r" + dither), false);
+            player.sendSystemMessage(Component.literal("§6Procedure (top to bottom): §r"), false);
             for (EffectDataPair effect : effects) {
-                player.sendMessage(Text.literal(" -> " + effect.effect().getIdentifier() + ", " + String.join(",", effect.data())), false);
+                player.sendSystemMessage(Component.literal(" -> " + effect.effect().getIdentifier() + ", " + String.join(",", effect.data())), false);
             }
-            player.sendMessage(Text.literal("§6Generating..."), false);
+            player.sendSystemMessage(Component.literal("§6Generating..."), false);
 
             BufferedImage m = new BufferedImage(finalWidth, finalHeight, BufferedImage.TYPE_4BYTE_ABGR);
             try {
                 m = Map.compositeImage(player, new CompositeEffects.CanvasData(finalWidth, finalHeight), effects);
             } catch (Exception e) {
-                Book2Map.Logger.warn("Map.compositeImage() failed: " + e.toString());
-                player.sendMessage(Text.literal("§cFailed to generate map! Check your settings!"), false);
+                Book2Map.LOGGER.warn("Map.compositeImage() failed: " + e.toString());
+                player.sendSystemMessage(Component.literal("§cFailed to generate map! Check your settings!"), false);
                 return;
             }
 
             BufferedImage finalM = m;
             CompletableFuture.supplyAsync(() -> Map.render(finalM, finalDither, finalWidth, finalHeight)).thenAcceptAsync(mapImage -> {
-                var items = Map.toVanillaItems(mapImage, player.getEntityWorld(), "");
-                giveToPlayer(player, items, "Generated from book", finalWidth, finalHeight);
-                player.sendMessage(Text.literal("§6Done!"), false);
-            }, player.getEntityWorld().getServer());
+                var items = Map.toVanillaItems(mapImage, player.level(), "");
+                Map.giveToPlayer(player, items, "Generated from book", finalWidth, finalHeight);
+                player.sendSystemMessage(Component.literal("§6Done!"), false);
+            }, player.level().getServer());
         }
-        else player.sendMessage(Text.of("§6You need to hold a book to use this command!"), false);
+        else player.sendSystemMessage(Component.nullToEmpty("§6You need to hold a book to use this command!"), false);
         return;
     }
 
-    public static void giveToPlayer(PlayerEntity player, List<ItemStack> items, String loreText, int width, int height) {
+    public static void giveToPlayer(Player player, List<ItemStack> items, String loreText, int width, int height) {
         if (items.size() == 1) {
-            player.giveItemStack(items.get(0));
+            player.addItem(items.getFirst());
         } else {
             var bundle = new ItemStack(Items.BUNDLE);
-            bundle.set(DataComponentTypes.BUNDLE_CONTENTS, new BundleContentsComponent(items));
-            bundle.set(DataComponentTypes.LORE, new LoreComponent(List.of(Text.literal(loreText))));
-            bundle.set(DataComponentTypes.CUSTOM_NAME, Text.literal("Maps").formatted(Formatting.GOLD));
-            NbtCompound n = new NbtCompound();
+            bundle.set(DataComponents.BUNDLE_CONTENTS, new BundleContents(items.stream().map(ItemStackTemplate::fromNonEmptyStack).toList()));
+            bundle.set(DataComponents.LORE, new ItemLore(List.of(Component.literal(loreText))));
+            bundle.set(DataComponents.CUSTOM_NAME, Component.literal("Maps").withStyle(ChatFormatting.GOLD));
+            CompoundTag n = new CompoundTag();
             n.putBoolean("image2map:quick_place", true);
-            n.putInt("image2map:width", MathHelper.ceil(width / 128d));
-            n.putInt("image2map:height", MathHelper.ceil(height / 128d));
-            bundle.set(DataComponentTypes.CUSTOM_DATA, NbtComponent.of(n));
-            player.giveItemStack(bundle);
+            n.putInt("image2map:width", Mth.ceil(width / 128.0d));
+            n.putInt("image2map:height", Mth.ceil(height / 128.0d));
+            bundle.set(DataComponents.CUSTOM_DATA, CustomData.of(n));
+            player.addItem(bundle);
         }
     }
 }
