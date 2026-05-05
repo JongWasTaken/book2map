@@ -22,7 +22,7 @@ public final class MixinPlugin implements IMixinConfigPlugin {
 
     @Override
     public boolean shouldApplyMixin(String targetClassName, String mixinClassName) {
-        return CONDITIONS.getOrDefault(mixinClassName, TRUE).get();
+        return MixinPlugin.CONDITIONS.getOrDefault(mixinClassName, MixinPlugin.TRUE).get();
     }
 
     // Boilerplate

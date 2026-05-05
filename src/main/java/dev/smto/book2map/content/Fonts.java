@@ -1,4 +1,6 @@
-package dev.smto.book2map;
+package dev.smto.book2map.content;
+
+import dev.smto.book2map.Book2Map;
 
 import java.awt.*;
 import java.io.File;
@@ -17,11 +19,11 @@ public class Fonts {
                     try {
                         env.registerFont(Font.createFont(Font.TRUETYPE_FONT, file));
                     } catch (Exception e) {
-                        Book2Map.LOGGER.error("Error while loading user font \"" + file.getName() + "\": " + e.toString());
+                        Book2Map.LOGGER.error("Error while loading user font \"{}\": {}", file.getName(), e.toString());
                     }
                 }
                 else {
-                    Book2Map.LOGGER.warn("Skipping non-font file \"" + file.getName() + "\"");
+                    Book2Map.LOGGER.warn("Found non-font file \"{}\"", file.getName());
                 }
             }
         }
@@ -36,10 +38,10 @@ public class Fonts {
 
         return f;
     }
-    public static ArrayList<Font> LIST = Fonts.findAllFonts();
+    private static ArrayList<Font> availableFonts = Fonts.findAllFonts();
 
     public static void reload() {
-        Fonts.LIST = Fonts.findAllFonts();
+        Fonts.availableFonts = Fonts.findAllFonts();
     }
 
     private static boolean isFontFile(File file) {
@@ -49,8 +51,11 @@ public class Fonts {
             return false; // empty extension
         }
         if (name.substring(lastIndexOf).equals(".ttf")) return true;
-        if (name.substring(lastIndexOf).equals(".otf")) return true;
-        return false;
+        return name.substring(lastIndexOf).equals(".otf");
+    }
+
+    public static ArrayList<Font> getAvailableFonts() {
+        return Fonts.availableFonts;
     }
 }
 
