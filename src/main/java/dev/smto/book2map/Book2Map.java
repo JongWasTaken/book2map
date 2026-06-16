@@ -69,7 +69,7 @@ public class Book2Map implements ModInitializer {
 		}
 
 		// register commands
-		CommandRegistrationCallback.EVENT.register((dispatcher, x, environment) -> {
+		CommandRegistrationCallback.EVENT.register((dispatcher, _, _) -> {
 			Commands.register(dispatcher);
 		});
         Book2Map.LOGGER.info("book2map loaded!");
