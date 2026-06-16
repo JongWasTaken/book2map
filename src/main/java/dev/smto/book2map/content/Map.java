@@ -21,6 +21,7 @@ import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.TextColor;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
@@ -141,10 +142,17 @@ public class Map {
                 pages.add(Map.convertTextCompound(pair.raw()).replace("@@","§"));
             }));
 
-            ArrayList<ConfiguredEffect> effects = new ArrayList<ConfiguredEffect>();
+            ArrayList<ConfiguredEffect> effects = new ArrayList<>();
 
             // READ DATA FROM BOOK HERE
             // defaults
+
+            String bundleLore;
+            if (!pages.isEmpty()) bundleLore = pages.getFirst().trim().substring(0, 32).replace('\n', ' ') + "...";
+            else {
+                bundleLore = "(Empty book)";
+            }
+
             String font = Fonts.getAvailableFonts().getFirst().getFontName();
             for (Font xfont : Fonts.getAvailableFonts()) {
                 if (xfont.getFontName().equals("Minecraft")) {
@@ -240,10 +248,7 @@ public class Map {
                                                 new ArrayList<>(List.of(arguments.split(",")))
                                         ));
                                     } else {
-                                        effects.add(new ConfiguredEffect(
-                                                CompositeEffects.get(line[1]),
-                                                new ArrayList<>()
-                                        ));
+                                        effects.add(ConfiguredEffect.unconfigured(CompositeEffects.get(line[1])));
                                     }
                                 } catch (Exception ignored) {
                                     player.sendSystemMessage(Component.literal("§cInvalid effect settings: " + line[1].trim()), false);
@@ -334,13 +339,9 @@ public class Map {
                                 } else {
                                     var temp = ChatFormatting.getByCode(c);
                                     if (temp != null) {
-                                        if (temp.isColor()) {
-                                            // 256*256*red+256*green+blue
-                                            currentColor = new Color((temp.getColor() / 256 / 256) % 256, (temp.getColor() / 256) % 256, temp.getColor() % 256);
-                                        }
-                                        else {
-                                            //Book2Map.Logger.warn("TAG IS NOT COLOR: " + temp.getName());
-                                            if(temp.getChar() == 'l') {
+                                        //Book2Map.Logger.warn("TAG IS NOT COLOR: " + temp.getName());
+                                        switch (temp.toString()) {
+                                            case "§l" -> {
                                                 if (currentFontType == 0) {
                                                     currentFontType = 1;
                                                 }
@@ -348,7 +349,7 @@ public class Map {
                                                     currentFontType = 3;
                                                 }
                                             }
-                                            else if (temp.getChar() == 'o') {
+                                            case "§o" -> {
                                                 if (currentFontType == 0) {
                                                     currentFontType = 2;
                                                 }
@@ -356,9 +357,17 @@ public class Map {
                                                     currentFontType = 3;
                                                 }
                                             }
-                                            else if (temp.getChar() == 'r') {
+                                            case "§r" -> {
                                                 currentColor = finalColor;
                                                 currentFontType = 0;
+                                            }
+                                            case "§n","§m","§k" -> {
+                                                // ignore
+                                            }
+                                            default -> {
+                                                // only colors should remain at this point
+                                                var tempC = TextColor.fromLegacyFormat(temp);
+                                                if (tempC != null) currentColor = new Color((tempC.getValue() / 256 / 256) % 256, (tempC.getValue() / 256) % 256, tempC.getValue() % 256);
                                             }
                                         }
                                     }
@@ -415,7 +424,7 @@ public class Map {
             BufferedImage finalM = m;
             CompletableFuture.supplyAsync(() -> Map.render(finalM, finalDither, finalWidth, finalHeight)).thenAcceptAsync(mapImage -> {
                 var items = Map.toVanillaItems(mapImage, player.level());
-                Map.giveToPlayer(player, items, "Generated from book", finalWidth, finalHeight);
+                Map.giveToPlayer(player, items, bundleLore, finalWidth, finalHeight);
                 player.sendSystemMessage(Component.literal("§6Done!"), false);
             }, player.level().getServer());
         }
@@ -428,8 +437,8 @@ public class Map {
         } else {
             var bundle = new ItemStack(Items.BUNDLE);
             bundle.set(DataComponents.BUNDLE_CONTENTS, new BundleContents(items.stream().map(ItemStackTemplate::fromNonEmptyStack).toList()));
-            bundle.set(DataComponents.LORE, new ItemLore(List.of(Component.literal(loreText))));
-            bundle.set(DataComponents.CUSTOM_NAME, Component.literal("Maps").withStyle(ChatFormatting.GOLD));
+            bundle.set(DataComponents.LORE, new ItemLore(List.of(Component.literal(loreText), Component.literal("Use this bundle on a wall of item frames!").withColor(TextColor.GOLD))));
+            bundle.set(DataComponents.CUSTOM_NAME, Component.literal("Converted Book").withStyle(ChatFormatting.GOLD));
             CompoundTag n = new CompoundTag();
             n.putBoolean("image2map:quick_place", true);
             n.putInt("image2map:width", Mth.ceil(width / 128.0d));

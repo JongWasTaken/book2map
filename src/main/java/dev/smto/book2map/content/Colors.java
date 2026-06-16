@@ -3,9 +3,8 @@ package dev.smto.book2map.content;
 import java.awt.*;
 import java.util.HashMap;
 import java.util.Locale;
-import net.minecraft.ChatFormatting;
+import net.minecraft.network.chat.TextColor;
 
-@SuppressWarnings("DataFlowIssue")
 public class Colors {
     public static final HashMap<String, Color> STRING_TO_COLOR_MAP = new HashMap<>() {{
         this.put("black", Color.BLACK);
@@ -53,14 +52,10 @@ public class Colors {
         if (c != null) return c;
 
         // minecraft color conversion
-        var temp = ChatFormatting.getByName(color.toUpperCase(Locale.ROOT));
-        if (temp != null) {
-            if (temp.equals(ChatFormatting.RESET)) return defaultColor;
-            if (temp.equals(ChatFormatting.BOLD)) return defaultColor;
-            if (temp.equals(ChatFormatting.ITALIC)) return defaultColor;
-            if (temp.equals(ChatFormatting.OBFUSCATED)) return defaultColor;
-            if (temp.equals(ChatFormatting.STRIKETHROUGH)) return defaultColor;
-            return new Color((temp.getColor() / 256 / 256) % 256, (temp.getColor() / 256) % 256, temp.getColor() % 256);
+        var temp = TextColor.parseColor(color.toUpperCase(Locale.ROOT));
+        if (temp.isSuccess()) {
+            int nc = temp.getOrThrow().getValue();
+            return new Color((nc / 256 / 256) % 256, (nc / 256) % 256, nc % 256);
         }
         // fallback
         return defaultColor;
